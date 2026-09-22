@@ -97,10 +97,12 @@
   .stepbtn:active{background:var(--border);}
   #amountInput{flex:1; min-width:0; border:1.5px solid var(--border); background:var(--surface-2); color:var(--ink); border-radius:12px; padding:0 12px; font-size:20px; font-weight:800; text-align:center; font-variant-numeric:tabular-nums; font-family:var(--font-body);}
 
-  input[type="text"], input[type="number"], input[type="datetime-local"]{
+  input[type="text"], input[type="number"], input[type="datetime-local"], input[type="password"], textarea{
     width:100%; border:1.5px solid var(--border); background:var(--surface-2); color:var(--ink);
     border-radius:12px; padding:11px 12px; font-size:15px; font-family:var(--font-body);
   }
+  textarea{ resize:vertical; }
+  #aiAnswer{ text-align:left; white-space:pre-wrap; line-height:1.5; }
   input::placeholder{color:var(--ink-muted);}
   input:focus, .chip:focus-visible, button:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
 
@@ -226,6 +228,30 @@
     </section>
 
     <section class="card">
+      <h2>Hỏi AI về lượng sữa</h2>
+      <div id="aiKeySetup">
+        <p class="footnote" style="margin:0; text-align:left;">Dùng API key miễn phí của Google Gemini để AI đọc dữ liệu bú của bé và trả lời câu hỏi. Lấy key tại <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent); font-weight:700;">aistudio.google.com/apikey</a> (đăng nhập Google → "Create API key", không cần thẻ). Key chỉ lưu trên điện thoại này, không gửi cho ai khác.</p>
+        <div class="field" style="margin-top:8px;">
+          <label>API key (Gemini)</label>
+          <input id="aiKeyInput" type="password" placeholder="Dán API key vào đây" autocomplete="off">
+        </div>
+        <button type="button" class="primarybtn" id="aiKeySave">Lưu API key</button>
+      </div>
+      <div id="aiChatBox" hidden>
+        <div class="chiprow" id="aiSuggestChips"></div>
+        <div class="field">
+          <textarea id="aiQuestionInput" rows="2" placeholder="vd: Bé bú vậy có đủ không?"></textarea>
+        </div>
+        <div class="formactions">
+          <button type="button" class="ghostbtn" id="aiKeyClear">Đổi key</button>
+          <button type="button" class="primarybtn" id="aiAskBtn" style="flex:1;">Hỏi AI</button>
+        </div>
+        <div id="aiAnswer" class="banner" hidden></div>
+      </div>
+      <p class="footnote" style="text-align:left; margin-top:2px;">AI có thể trả lời chưa chính xác — đây không phải tư vấn y tế, hãy hỏi bác sĩ nhi khoa nếu bạn lo lắng về việc bú của bé.</p>
+    </section>
+
+    <section class="card">
       <h2>Sao lưu dữ liệu</h2>
       <p class="footnote" style="margin:0; text-align:left;">Dữ liệu chỉ lưu trên điện thoại này. Nên xuất file sao lưu định kỳ để không mất dữ liệu nếu đổi máy hoặc xóa dữ liệu Safari.</p>
       <div class="formactions">
@@ -288,7 +314,16 @@
     toast: document.getElementById('toast'),
     exportBtn: document.getElementById('exportBtn'),
     importBtn: document.getElementById('importBtn'),
-    importFile: document.getElementById('importFile')
+    importFile: document.getElementById('importFile'),
+    aiKeySetup: document.getElementById('aiKeySetup'),
+    aiKeyInput: document.getElementById('aiKeyInput'),
+    aiKeySave: document.getElementById('aiKeySave'),
+    aiChatBox: document.getElementById('aiChatBox'),
+    aiSuggestChips: document.getElementById('aiSuggestChips'),
+    aiQuestionInput: document.getElementById('aiQuestionInput'),
+    aiKeyClear: document.getElementById('aiKeyClear'),
+    aiAskBtn: document.getElementById('aiAskBtn'),
+    aiAnswer: document.getElementById('aiAnswer')
   };
 
   var storageOk = true;
@@ -714,6 +749,115 @@
     reader.readAsText(file);
   }
 
+  var GEMINI_KEY_STORAGE = 'nhatkysua.gemini_key.v1';
+  var GEMINI_MODEL = 'gemini-2.0-flash';
+  var AI_SUGGESTIONS = [
+    'Bé bú vậy có đủ không?',
+    'So với 7 ngày trước thế nào?',
+    'Có cữ nào bất thường không?'
+  ];
+
+  function renderAiSuggestChips(){
+    el.aiSuggestChips.innerHTML = '';
+    AI_SUGGESTIONS.forEach(function(q){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip';
+      b.textContent = q;
+      b.addEventListener('click', function(){ el.aiQuestionInput.value = q; el.aiQuestionInput.focus(); });
+      el.aiSuggestChips.appendChild(b);
+    });
+  }
+
+  function buildFeedingContext(){
+    var days = [];
+    for(var i=13;i>=0;i--){ days.push(addDays(todayKey(), -i)); }
+    var dayLines = days.map(function(key){
+      var items = allDocs.filter(function(d){ return d.dateKey === key; });
+      var total = items.reduce(function(s,d){ return s + (Number(d.amountMl)||0); }, 0);
+      return key + ': ' + items.length + ' cữ, tổng ' + total + ' ml';
+    });
+    var recentLines = allDocs.slice(0, 15).map(function(d){
+      var t = typeInfo(d.type);
+      var extra = [];
+      if(d.side) extra.push(sideLabel(d.side));
+      if(d.durationMin) extra.push(d.durationMin + ' phút');
+      if(d.note) extra.push(d.note);
+      return d.at + ' — ' + t.label + ' ' + (d.amountMl||0) + 'ml' + (extra.length ? ' (' + extra.join(', ') + ')' : '');
+    });
+    return 'Tổng hợp 14 ngày gần đây (ngày: số cữ, tổng ml):\n' + dayLines.join('\n') +
+      '\n\nChi tiết các cữ gần nhất (mới nhất trước):\n' + (recentLines.length ? recentLines.join('\n') : '(chưa có dữ liệu)');
+  }
+
+  function setAiBusy(busy){
+    el.aiAskBtn.disabled = busy;
+    el.aiAskBtn.textContent = busy ? 'Đang hỏi...' : 'Hỏi AI';
+  }
+
+  async function handleAiAsk(){
+    var apiKey = '';
+    try{ apiKey = localStorage.getItem(GEMINI_KEY_STORAGE) || ''; } catch(e){}
+    if(!apiKey){ showToast('Chưa có API key'); return; }
+    var question = el.aiQuestionInput.value.trim();
+    if(!question){ showToast('Nhập câu hỏi trước đã'); return; }
+
+    var prompt = 'Bạn là trợ lý giúp cha mẹ theo dõi lượng sữa bé bú hàng ngày. ' +
+      'Dựa trên dữ liệu dưới đây, trả lời câu hỏi của phụ huynh bằng tiếng Việt, ngắn gọn, dễ hiểu, giọng thân thiện. ' +
+      'Đây không phải tư vấn y tế — nếu câu hỏi liên quan sức khỏe của bé, hãy nhắc phụ huynh hỏi thêm bác sĩ nhi khoa nếu lo lắng.\n\n' +
+      buildFeedingContext() + '\n\nCâu hỏi của phụ huynh: ' + question;
+
+    setAiBusy(true);
+    el.aiAnswer.hidden = true;
+    try{
+      var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent?key=' + encodeURIComponent(apiKey), {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+      var data = await res.json();
+      if(!res.ok){
+        var msg = (data && data.error && data.error.message) ? data.error.message : ('Lỗi ' + res.status);
+        throw new Error(msg);
+      }
+      var text = data && data.candidates && data.candidates[0] && data.candidates[0].content
+        && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
+      el.aiAnswer.textContent = text || 'AI không trả lời được câu này, thử hỏi lại nhé.';
+      el.aiAnswer.hidden = false;
+    } catch(e){
+      el.aiAnswer.textContent = 'Lỗi khi hỏi AI: ' + (e && e.message ? e.message : 'không kết nối được');
+      el.aiAnswer.hidden = false;
+    } finally {
+      setAiBusy(false);
+    }
+  }
+
+  function refreshAiPanel(){
+    var key = '';
+    try{ key = localStorage.getItem(GEMINI_KEY_STORAGE) || ''; } catch(e){}
+    el.aiKeySetup.hidden = !!key;
+    el.aiChatBox.hidden = !key;
+  }
+
+  function setupAiPanel(){
+    renderAiSuggestChips();
+    refreshAiPanel();
+    el.aiKeySave.addEventListener('click', function(){
+      var v = el.aiKeyInput.value.trim();
+      if(!v){ showToast('Dán API key vào trước đã'); return; }
+      try{ localStorage.setItem(GEMINI_KEY_STORAGE, v); } catch(e){ showToast('Không lưu được key trên máy này'); return; }
+      el.aiKeyInput.value = '';
+      refreshAiPanel();
+      showToast('Đã lưu API key');
+    });
+    el.aiKeyClear.addEventListener('click', function(){
+      try{ localStorage.removeItem(GEMINI_KEY_STORAGE); } catch(e){}
+      el.aiAnswer.hidden = true;
+      el.aiQuestionInput.value = '';
+      refreshAiPanel();
+    });
+    el.aiAskBtn.addEventListener('click', handleAiAsk);
+  }
+
   function setupUI(){
     el.prevDay.addEventListener('click', function(){ selectedDateKey = addDays(selectedDateKey, -1); renderAll(); });
     el.nextDay.addEventListener('click', function(){ if(selectedDateKey < todayKey()){ selectedDateKey = addDays(selectedDateKey, 1); renderAll(); } });
@@ -730,6 +874,7 @@
       el.importFile.value = '';
     });
     setInterval(renderSummary, 30000);
+    setupAiPanel();
   }
 
   function boot(){

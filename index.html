@@ -412,12 +412,12 @@
   function resetForm(){
     editingId = null;
     editingCreatedAt = null;
-    formState = { type:'direct', side:'left' };
+    formState = { type:'pumped', side:null };
     el.amountInput.value = 90;
     el.durationInput.value = '';
     el.timeInput.value = nowLocalInputValue();
     el.noteInput.value = '';
-    el.sideField.hidden = false;
+    el.sideField.hidden = true;
     el.formTitle.textContent = 'Thêm cữ bú';
     el.saveBtn.textContent = 'Lưu cữ bú';
     el.cancelEdit.hidden = true;

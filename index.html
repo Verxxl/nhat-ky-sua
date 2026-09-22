@@ -172,6 +172,15 @@
   <main style="display:flex; flex-direction:column; gap:16px;">
     <div id="storageBanner" class="banner" hidden>Không lưu được dữ liệu trên thiết bị này (bộ nhớ trình duyệt bị chặn). Hãy tắt chế độ duyệt web riêng tư rồi thử lại.</div>
 
+    <section class="card">
+      <h2>Thông tin của bé</h2>
+      <div class="field">
+        <label>Ngày sinh</label>
+        <input id="babyDobInput" type="date">
+      </div>
+      <p class="footnote" id="babyAgeText" style="text-align:left; margin:0;"></p>
+    </section>
+
     <section class="card formcard">
       <h2 id="formTitle">Thêm cữ bú</h2>
 
@@ -225,6 +234,15 @@
     <section class="card chartcard">
       <h2>7 ngày gần đây</h2>
       <div class="chart" id="weekChart"></div>
+    </section>
+
+    <section class="card">
+      <h2>AI tự phân tích hàng ngày</h2>
+      <p class="footnote" style="text-align:left; margin:0;">Dựa trên ngày tuổi của bé và lượng sữa đã ghi, AI tự đưa ra nhận xét mỗi ngày (dùng chung API key ở mục bên dưới).</p>
+      <div id="aiAutoBody"></div>
+      <div class="formactions">
+        <button type="button" class="ghostbtn" id="aiAutoRefresh" style="flex:1;" hidden>Phân tích lại</button>
+      </div>
     </section>
 
     <section class="card">
@@ -323,7 +341,11 @@
     aiQuestionInput: document.getElementById('aiQuestionInput'),
     aiKeyClear: document.getElementById('aiKeyClear'),
     aiAskBtn: document.getElementById('aiAskBtn'),
-    aiAnswer: document.getElementById('aiAnswer')
+    aiAnswer: document.getElementById('aiAnswer'),
+    babyDobInput: document.getElementById('babyDobInput'),
+    babyAgeText: document.getElementById('babyAgeText'),
+    aiAutoBody: document.getElementById('aiAutoBody'),
+    aiAutoRefresh: document.getElementById('aiAutoRefresh')
   };
 
   var storageOk = true;
@@ -750,6 +772,8 @@
   }
 
   var GEMINI_KEY_STORAGE = 'nhatkysua.gemini_key.v1';
+  var BABY_DOB_STORAGE = 'nhatkysua.baby_dob.v1';
+  var AI_AUTO_STORAGE = 'nhatkysua.ai_auto.v1';
   var GEMINI_MODEL = 'gemini-3.6-flash';
   var AI_SUGGESTIONS = [
     'Bé bú vậy có đủ không?',
@@ -794,14 +818,53 @@
     el.aiAskBtn.textContent = busy ? 'Đang hỏi...' : 'Hỏi AI';
   }
 
+  function getGeminiKey(){
+    try{ return localStorage.getItem(GEMINI_KEY_STORAGE) || ''; } catch(e){ return ''; }
+  }
+
+  function getBabyDob(){
+    try{ return localStorage.getItem(BABY_DOB_STORAGE) || ''; } catch(e){ return ''; }
+  }
+
+  function ageTextFromDob(dobStr){
+    if(!dobStr) return '';
+    var dob = keyToDate(dobStr);
+    var today = keyToDate(todayKey());
+    var diffDays = Math.round((today - dob) / 86400000);
+    if(isNaN(diffDays)) return '';
+    if(diffDays < 0) return 'Ngày sinh này ở tương lai, kiểm tra lại nhé.';
+    var weeks = Math.floor(diffDays / 7);
+    var months = Math.floor(diffDays / 30.44);
+    if(diffDays < 14) return diffDays + ' ngày tuổi';
+    if(months < 2) return diffDays + ' ngày tuổi (~' + weeks + ' tuần)';
+    return months + ' tháng tuổi (' + diffDays + ' ngày)';
+  }
+
+  async function callGemini(prompt){
+    var apiKey = getGeminiKey();
+    var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent?key=' + encodeURIComponent(apiKey), {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+    });
+    var data = await res.json();
+    if(!res.ok){
+      var msg = (data && data.error && data.error.message) ? data.error.message : ('Lỗi ' + res.status);
+      throw new Error(msg);
+    }
+    var text = data && data.candidates && data.candidates[0] && data.candidates[0].content
+      && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
+    return text || '';
+  }
+
   async function handleAiAsk(){
-    var apiKey = '';
-    try{ apiKey = localStorage.getItem(GEMINI_KEY_STORAGE) || ''; } catch(e){}
+    var apiKey = getGeminiKey();
     if(!apiKey){ showToast('Chưa có API key'); return; }
     var question = el.aiQuestionInput.value.trim();
     if(!question){ showToast('Nhập câu hỏi trước đã'); return; }
 
-    var prompt = 'Bạn là trợ lý giúp cha mẹ theo dõi lượng sữa bé bú hàng ngày. ' +
+    var dob = getBabyDob();
+    var prompt = 'Bạn là trợ lý giúp cha mẹ theo dõi lượng sữa bé bú hàng ngày' + (dob ? (', bé ' + ageTextFromDob(dob)) : '') + '. ' +
       'Dựa trên dữ liệu dưới đây, trả lời câu hỏi của phụ huynh bằng tiếng Việt, ngắn gọn, dễ hiểu, giọng thân thiện. ' +
       'Đây không phải tư vấn y tế — nếu câu hỏi liên quan sức khỏe của bé, hãy nhắc phụ huynh hỏi thêm bác sĩ nhi khoa nếu lo lắng.\n\n' +
       buildFeedingContext() + '\n\nCâu hỏi của phụ huynh: ' + question;
@@ -809,18 +872,7 @@
     setAiBusy(true);
     el.aiAnswer.hidden = true;
     try{
-      var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent?key=' + encodeURIComponent(apiKey), {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-      });
-      var data = await res.json();
-      if(!res.ok){
-        var msg = (data && data.error && data.error.message) ? data.error.message : ('Lỗi ' + res.status);
-        throw new Error(msg);
-      }
-      var text = data && data.candidates && data.candidates[0] && data.candidates[0].content
-        && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
+      var text = await callGemini(prompt);
       el.aiAnswer.textContent = text || 'AI không trả lời được câu này, thử hỏi lại nhé.';
       el.aiAnswer.hidden = false;
     } catch(e){
@@ -832,8 +884,7 @@
   }
 
   function refreshAiPanel(){
-    var key = '';
-    try{ key = localStorage.getItem(GEMINI_KEY_STORAGE) || ''; } catch(e){}
+    var key = getGeminiKey();
     el.aiKeySetup.hidden = !!key;
     el.aiChatBox.hidden = !key;
   }
@@ -847,6 +898,7 @@
       try{ localStorage.setItem(GEMINI_KEY_STORAGE, v); } catch(e){ showToast('Không lưu được key trên máy này'); return; }
       el.aiKeyInput.value = '';
       refreshAiPanel();
+      renderAiAutoBody();
       showToast('Đã lưu API key');
     });
     el.aiKeyClear.addEventListener('click', function(){
@@ -854,8 +906,92 @@
       el.aiAnswer.hidden = true;
       el.aiQuestionInput.value = '';
       refreshAiPanel();
+      renderAiAutoBody();
     });
     el.aiAskBtn.addEventListener('click', handleAiAsk);
+  }
+
+  function getAiAutoCache(){
+    try{
+      var raw = localStorage.getItem(AI_AUTO_STORAGE);
+      return raw ? JSON.parse(raw) : null;
+    } catch(e){ return null; }
+  }
+
+  function setAiAutoCache(text){
+    try{ localStorage.setItem(AI_AUTO_STORAGE, JSON.stringify({ date: todayKey(), text: text })); } catch(e){}
+  }
+
+  function showAiAutoMessage(text, isBanner){
+    el.aiAutoBody.innerHTML = '';
+    var box = document.createElement(isBanner ? 'div' : 'p');
+    box.className = isBanner ? 'banner' : 'footnote';
+    if(!isBanner){ box.style.textAlign = 'left'; box.style.margin = '0'; }
+    box.textContent = text;
+    el.aiAutoBody.appendChild(box);
+  }
+
+  async function runAutoAnalysis(force){
+    var apiKey = getGeminiKey();
+    var dob = getBabyDob();
+    if(!apiKey || !dob) return;
+    var cache = getAiAutoCache();
+    if(!force && cache && cache.date === todayKey() && cache.text){
+      showAiAutoMessage(cache.text, true);
+      return;
+    }
+    el.aiAutoRefresh.disabled = true;
+    showAiAutoMessage('Đang phân tích...', false);
+    var prompt = 'Bạn là trợ lý theo dõi việc bú sữa cho cha mẹ có em bé ' + ageTextFromDob(dob) + '. ' +
+      'Dựa trên dữ liệu bú sữa dưới đây, hãy nhận xét ngắn gọn (khoảng 3-5 câu) bằng tiếng Việt: có gì bất thường không (bú quá ít, quá nhiều, hay khoảng cách giữa các cữ bất thường so với độ tuổi của bé), và gợi ý gì cho mẹ nếu cần. ' +
+      'Nếu dữ liệu bình thường, chỉ cần nhận xét ngắn gọn tích cực, không cần tạo lo lắng không cần thiết. ' +
+      'Đây không phải tư vấn y tế — nếu có dấu hiệu đáng lo, luôn nhắc mẹ nên hỏi bác sĩ nhi khoa.\n\n' +
+      buildFeedingContext();
+    try{
+      var text = await callGemini(prompt);
+      text = text || 'AI chưa phân tích được, thử lại sau.';
+      setAiAutoCache(text);
+      showAiAutoMessage(text, true);
+    } catch(e){
+      showAiAutoMessage('Lỗi khi phân tích: ' + (e && e.message ? e.message : 'không kết nối được'), true);
+    } finally {
+      el.aiAutoRefresh.disabled = false;
+    }
+  }
+
+  function renderAiAutoBody(){
+    var apiKey = getGeminiKey();
+    var dob = getBabyDob();
+    if(!dob){
+      el.aiAutoRefresh.hidden = true;
+      showAiAutoMessage('Nhập ngày sinh của bé ở mục "Thông tin của bé" phía trên để bật tính năng này.', false);
+      return;
+    }
+    if(!apiKey){
+      el.aiAutoRefresh.hidden = true;
+      showAiAutoMessage('Cần API key ở mục "Hỏi AI về lượng sữa" bên dưới để bật tính năng này.', false);
+      return;
+    }
+    el.aiAutoRefresh.hidden = false;
+    var cache = getAiAutoCache();
+    if(cache && cache.date === todayKey() && cache.text){
+      showAiAutoMessage(cache.text, true);
+    } else {
+      runAutoAnalysis(false);
+    }
+  }
+
+  function setupBabyInfo(){
+    var dob = getBabyDob();
+    el.babyDobInput.value = dob;
+    el.babyAgeText.textContent = ageTextFromDob(dob);
+    el.babyDobInput.addEventListener('change', function(){
+      try{ localStorage.setItem(BABY_DOB_STORAGE, el.babyDobInput.value); } catch(e){ showToast('Không lưu được trên máy này'); }
+      el.babyAgeText.textContent = ageTextFromDob(el.babyDobInput.value);
+      renderAiAutoBody();
+    });
+    el.aiAutoRefresh.addEventListener('click', function(){ runAutoAnalysis(true); });
+    renderAiAutoBody();
   }
 
   function setupUI(){
@@ -874,6 +1010,7 @@
       el.importFile.value = '';
     });
     setInterval(renderSummary, 30000);
+    setupBabyInfo();
     setupAiPanel();
   }
 

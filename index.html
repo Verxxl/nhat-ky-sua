@@ -257,7 +257,7 @@
     {key:'right', label:'Phải'},
     {key:'both', label:'Cả hai'}
   ];
-  var AMOUNT_PRESETS = [60,90,120,150,180,210];
+  var AMOUNT_PRESET_OFFSETS = [-20,-10,0,10,20,30];
   var WEEKDAY_SHORT = ['CN','T2','T3','T4','T5','T6','T7'];
 
   var el = {
@@ -373,6 +373,7 @@
         if(t.key !== 'direct') formState.side = null; else if(!formState.side) formState.side = 'left';
         renderTypeChips();
         renderSideChips();
+        renderAmountPresets();
         el.sideField.hidden = t.key !== 'direct';
       });
       el.typeChips.appendChild(b);
@@ -394,9 +395,21 @@
     });
   }
 
+  function getPresetBaseAmount(){
+    var last = allDocs.find(function(d){ return d.type === formState.type && d.amountMl; })
+      || allDocs.find(function(d){ return d.amountMl; });
+    if(last) return Math.max(10, Math.round(last.amountMl/10)*10);
+    return 90;
+  }
+
   function renderAmountPresets(){
     el.amountPresets.innerHTML = '';
-    AMOUNT_PRESETS.forEach(function(v){
+    var base = getPresetBaseAmount();
+    var seen = {};
+    AMOUNT_PRESET_OFFSETS.forEach(function(off){
+      var v = Math.max(10, base + off);
+      if(seen[v]) return;
+      seen[v] = true;
       var b = document.createElement('button');
       b.type = 'button';
       b.className = 'chip preset' + (Number(el.amountInput.value)===v ? ' active' : '');

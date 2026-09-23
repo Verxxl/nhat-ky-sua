@@ -14,6 +14,8 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap">
 <style>
   :root{
@@ -181,6 +183,27 @@
       <p class="footnote" id="babyAgeText" style="text-align:left; margin:0;"></p>
     </section>
 
+    <section class="card">
+      <h2>Đồng bộ với người thân</h2>
+      <div id="familySetup">
+        <p class="footnote" style="text-align:left; margin:0;">Nhập cùng một mã ở cả 2 điện thoại để 2 người thấy chung dữ liệu, cập nhật tức thời. Để trống nếu chỉ dùng 1 mình.</p>
+        <div class="field" style="margin-top:8px;">
+          <label>Mã gia đình</label>
+          <input id="familyCodeInput" type="text" placeholder="vd: sua-yeu-1234" autocomplete="off">
+        </div>
+        <div class="formactions">
+          <button type="button" class="ghostbtn" id="familyCodeSuggest" style="flex:1;">Gợi ý mã</button>
+          <button type="button" class="primarybtn" id="familyCodeSave" style="flex:1;">Bắt đầu đồng bộ</button>
+        </div>
+      </div>
+      <div id="familyActive" hidden>
+        <p class="footnote" style="text-align:left; margin:0;">Đang đồng bộ với mã: <strong id="familyCodeDisplay"></strong>. Nhập đúng mã này trên điện thoại kia để thấy chung dữ liệu.</p>
+        <div class="formactions">
+          <button type="button" class="ghostbtn" id="familyCodeStop" style="flex:1;">Ngừng đồng bộ, dùng 1 mình</button>
+        </div>
+      </div>
+    </section>
+
     <section class="card formcard">
       <h2 id="formTitle">Thêm cữ bú</h2>
 
@@ -345,11 +368,21 @@
     babyDobInput: document.getElementById('babyDobInput'),
     babyAgeText: document.getElementById('babyAgeText'),
     aiAutoBody: document.getElementById('aiAutoBody'),
-    aiAutoRefresh: document.getElementById('aiAutoRefresh')
+    aiAutoRefresh: document.getElementById('aiAutoRefresh'),
+    familySetup: document.getElementById('familySetup'),
+    familyCodeInput: document.getElementById('familyCodeInput'),
+    familyCodeSuggest: document.getElementById('familyCodeSuggest'),
+    familyCodeSave: document.getElementById('familyCodeSave'),
+    familyActive: document.getElementById('familyActive'),
+    familyCodeDisplay: document.getElementById('familyCodeDisplay'),
+    familyCodeStop: document.getElementById('familyCodeStop')
   };
 
   var storageOk = true;
   var allDocs = [];
+  var familyCode = '';
+  var fsDb = null;
+  var fsUnsub = null;
   var selectedDateKey = todayKey();
   var editingId = null;
   var editingCreatedAt = null;
@@ -400,6 +433,88 @@
       el.storageBanner.hidden = false;
       return false;
     }
+  }
+
+  function getFamilyCode(){
+    try{ return localStorage.getItem(FAMILY_CODE_STORAGE) || ''; } catch(e){ return ''; }
+  }
+  function isFamilyMode(){ return !!familyCode; }
+
+  function initFirebase(){
+    if(fsDb) return fsDb;
+    if(typeof firebase === 'undefined') return null;
+    try{
+      if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+      fsDb = firebase.firestore();
+      return fsDb;
+    } catch(e){ return null; }
+  }
+
+  function familyFeedingsRef(){
+    var db = initFirebase();
+    if(!db || !familyCode) return null;
+    return db.collection('families').doc(familyCode).collection('feedings');
+  }
+
+  function subscribeFamily(){
+    var ref = familyFeedingsRef();
+    if(!ref){
+      el.storageBanner.textContent = 'Không kết nối được đồng bộ. Kiểm tra lại kết nối mạng.';
+      el.storageBanner.hidden = false;
+      return;
+    }
+    if(fsUnsub){ fsUnsub(); fsUnsub = null; }
+    fsUnsub = ref.onSnapshot(function(snap){
+      allDocs = snap.docs.map(function(d){ return Object.assign({id: d.id}, d.data()); });
+      allDocs.sort(function(a,b){ return (b.at||'').localeCompare(a.at||''); });
+      storageOk = true;
+      el.storageBanner.hidden = true;
+      renderAll();
+    }, function(err){
+      el.storageBanner.textContent = 'Lỗi đồng bộ: ' + (err && err.message ? err.message : 'không kết nối được');
+      el.storageBanner.hidden = false;
+    });
+  }
+
+  function suggestFamilyCode(){
+    var words = ['sua','yeu','thuong','nha','vui','nang','mai','be'];
+    var pick = function(){ return words[Math.floor(Math.random()*words.length)]; };
+    return pick() + '-' + pick() + '-' + Math.floor(1000 + Math.random()*9000);
+  }
+
+  function refreshFamilyPanel(){
+    var code = getFamilyCode();
+    el.familySetup.hidden = !!code;
+    el.familyActive.hidden = !code;
+    if(code) el.familyCodeDisplay.textContent = code;
+  }
+
+  function setupFamilyPanel(){
+    refreshFamilyPanel();
+    el.familyCodeSuggest.addEventListener('click', function(){
+      el.familyCodeInput.value = suggestFamilyCode();
+    });
+    el.familyCodeSave.addEventListener('click', function(){
+      var v = el.familyCodeInput.value.trim();
+      if(!v){ showToast('Nhập mã trước đã'); return; }
+      try{ localStorage.setItem(FAMILY_CODE_STORAGE, v); } catch(e){}
+      familyCode = v;
+      el.familyCodeInput.value = '';
+      refreshFamilyPanel();
+      showToast('Đang đồng bộ với mã "' + v + '"');
+      subscribeFamily();
+    });
+    el.familyCodeStop.addEventListener('click', function(){
+      if(fsUnsub){ fsUnsub(); fsUnsub = null; }
+      try{ localStorage.removeItem(FAMILY_CODE_STORAGE); } catch(e){}
+      familyCode = '';
+      refreshFamilyPanel();
+      el.storageBanner.hidden = true;
+      loadDocs();
+      if(!storageOk) el.storageBanner.hidden = false;
+      renderAll();
+      showToast('Đã ngừng đồng bộ, dùng dữ liệu trên máy này');
+    });
   }
 
   function showToast(msg){
@@ -531,6 +646,14 @@
       updatedAt: Date.now()
     };
 
+    if(isFamilyMode()){
+      saveFamily(data);
+    } else {
+      saveLocal(data);
+    }
+  }
+
+  function saveLocal(data){
     var prevDocs = allDocs.slice();
     var wasEditing = !!editingId;
     var mergedInto = null;
@@ -581,6 +704,51 @@
     renderAll();
   }
 
+  async function saveFamily(data){
+    var ref = familyFeedingsRef();
+    if(!ref){ showToast('Chưa kết nối được đồng bộ, kiểm tra mạng.'); return; }
+    var wasEditing = !!editingId;
+    el.saveBtn.disabled = true;
+    try{
+      if(editingId){
+        data.createdAt = editingCreatedAt || Date.now();
+        await ref.doc(editingId).set(data);
+        showToast('Đã cập nhật cữ bú');
+        selectedDateKey = data.dateKey;
+      } else {
+        var merge = findMergeCandidate(data);
+        if(merge){
+          var merged = Object.assign({}, merge);
+          delete merged.id;
+          merged.amountMl = (Number(merge.amountMl)||0) + (Number(data.amountMl)||0);
+          var durSum = (Number(merge.durationMin)||0) + (Number(data.durationMin)||0);
+          merged.durationMin = durSum > 0 ? durSum : null;
+          if(merge.side && data.side && merge.side !== data.side) merged.side = 'both';
+          else if(!merge.side && data.side) merged.side = data.side;
+          if(new Date(data.at).getTime() < new Date(merge.at).getTime()){
+            merged.at = data.at;
+            merged.dateKey = data.dateKey;
+          }
+          merged.note = [merge.note, data.note].filter(Boolean).join('; ');
+          merged.updatedAt = Date.now();
+          await ref.doc(merge.id).set(merged);
+          showToast('Cách cữ trước dưới 30 phút, đã gộp vào cữ lúc ' + fmtTime(merged.at));
+          selectedDateKey = merged.dateKey;
+        } else {
+          data.createdAt = Date.now();
+          await ref.add(data);
+          showToast('Đã lưu cữ bú');
+          selectedDateKey = data.dateKey;
+        }
+      }
+      resetForm();
+    } catch(e){
+      showToast('Không lưu được: ' + (e && e.message ? e.message : 'lỗi'));
+    } finally {
+      el.saveBtn.disabled = false;
+    }
+  }
+
   function findMergeCandidate(newData){
     var newTime = new Date(newData.at).getTime();
     if(isNaN(newTime)) return null;
@@ -601,6 +769,17 @@
   }
 
   function handleDelete(id){
+    if(isFamilyMode()){
+      var ref = familyFeedingsRef();
+      if(!ref){ showToast('Chưa kết nối được đồng bộ'); return; }
+      ref.doc(id).delete().then(function(){
+        showToast('Đã xóa cữ bú');
+        if(editingId === id) resetForm();
+      }).catch(function(e){
+        showToast('Không xóa được: ' + (e && e.message ? e.message : 'lỗi'));
+      });
+      return;
+    }
     var prevDocs = allDocs.slice();
     allDocs = allDocs.filter(function(d){ return d.id !== id; });
     if(saveDocs()){
@@ -803,13 +982,16 @@
           if(d && d.id && d.at) byId[d.id] = d;
         });
         allDocs = Object.keys(byId).map(function(k){ return byId[k]; });
-        if(saveDocs()){
+        if(isFamilyMode()){
+          importFamily(arr);
+        } else if(saveDocs()){
           showToast('Đã nhập dữ liệu (' + arr.length + ' mục)');
+          renderAll();
         } else {
           allDocs = prevDocs;
           showToast('Không nhập được - bộ nhớ trình duyệt bị chặn');
+          renderAll();
         }
-        renderAll();
       } catch(e){
         showToast('File không hợp lệ');
       }
@@ -817,9 +999,35 @@
     reader.readAsText(file);
   }
 
+  async function importFamily(arr){
+    var ref = familyFeedingsRef();
+    if(!ref){ showToast('Chưa kết nối được đồng bộ'); return; }
+    try{
+      var valid = arr.filter(function(d){ return d && d.id && d.at; });
+      await Promise.all(valid.map(function(d){
+        var copy = Object.assign({}, d);
+        var id = copy.id;
+        delete copy.id;
+        return ref.doc(id).set(copy);
+      }));
+      showToast('Đã nhập dữ liệu (' + valid.length + ' mục)');
+    } catch(e){
+      showToast('Không nhập được: ' + (e && e.message ? e.message : 'lỗi'));
+    }
+  }
+
   var GEMINI_KEY_STORAGE = 'nhatkysua.gemini_key.v1';
   var BABY_DOB_STORAGE = 'nhatkysua.baby_dob.v1';
   var AI_AUTO_STORAGE = 'nhatkysua.ai_auto.v1';
+  var FAMILY_CODE_STORAGE = 'nhatkysua.family_code.v1';
+  var FIREBASE_CONFIG = {
+    apiKey: "AIzaSyCGwEhdS7btordejvlNTvdc4_fFRdH3q4E",
+    authDomain: "nhat-ky-sua-1c202.firebaseapp.com",
+    projectId: "nhat-ky-sua-1c202",
+    storageBucket: "nhat-ky-sua-1c202.firebasestorage.app",
+    messagingSenderId: "105772586519",
+    appId: "1:105772586519:web:d97d0ac2fd3cbc10d32e52"
+  };
   var GEMINI_MODEL = 'gemini-3.6-flash';
   var AI_PERSONA = 'Bạn là một chuyên gia chăm sóc trẻ sơ sinh và tư vấn dinh dưỡng nhi khoa giàu kinh nghiệm, chuyên hỗ trợ các bậc cha mẹ Việt Nam về lịch bú, lượng sữa phù hợp theo từng giai đoạn phát triển của bé, và cách nhận biết các dấu hiệu bất thường khi bú. ';
   var AI_SUGGESTIONS = [
@@ -1061,11 +1269,17 @@
     setInterval(renderSummary, 30000);
     setupBabyInfo();
     setupAiPanel();
+    setupFamilyPanel();
   }
 
   function boot(){
-    loadDocs();
-    if(!storageOk) el.storageBanner.hidden = false;
+    familyCode = getFamilyCode();
+    if(familyCode){
+      subscribeFamily();
+    } else {
+      loadDocs();
+      if(!storageOk) el.storageBanner.hidden = false;
+    }
     resetForm();
     setupUI();
     renderAll();

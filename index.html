@@ -183,27 +183,6 @@
       <p class="footnote" id="babyAgeText" style="text-align:left; margin:0;"></p>
     </section>
 
-    <section class="card">
-      <h2>Đồng bộ với người thân</h2>
-      <div id="familySetup">
-        <p class="footnote" style="text-align:left; margin:0;">Nhập cùng một mã ở cả 2 điện thoại để 2 người thấy chung dữ liệu, cập nhật tức thời. Để trống nếu chỉ dùng 1 mình.</p>
-        <div class="field" style="margin-top:8px;">
-          <label>Mã gia đình</label>
-          <input id="familyCodeInput" type="text" placeholder="vd: sua-yeu-1234" autocomplete="off">
-        </div>
-        <div class="formactions">
-          <button type="button" class="ghostbtn" id="familyCodeSuggest" style="flex:1;">Gợi ý mã</button>
-          <button type="button" class="primarybtn" id="familyCodeSave" style="flex:1;">Bắt đầu đồng bộ</button>
-        </div>
-      </div>
-      <div id="familyActive" hidden>
-        <p class="footnote" style="text-align:left; margin:0;">Đang đồng bộ với mã: <strong id="familyCodeDisplay"></strong>. Nhập đúng mã này trên điện thoại kia để thấy chung dữ liệu.</p>
-        <div class="formactions">
-          <button type="button" class="ghostbtn" id="familyCodeStop" style="flex:1;">Ngừng đồng bộ, dùng 1 mình</button>
-        </div>
-      </div>
-    </section>
-
     <section class="card formcard">
       <h2 id="formTitle">Thêm cữ bú</h2>
 
@@ -302,7 +281,28 @@
       <input type="file" id="importFile" accept="application/json" hidden>
     </section>
 
-    <p class="footnote">Dữ liệu lưu ngay trên trình duyệt của điện thoại này, không đồng bộ với máy khác.</p>
+    <section class="card">
+      <h2>Đồng bộ với người thân</h2>
+      <div id="familySetup">
+        <p class="footnote" style="text-align:left; margin:0;">Nhập cùng một mã ở cả 2 điện thoại để 2 người thấy chung dữ liệu, cập nhật tức thời. Để trống nếu chỉ dùng 1 mình.</p>
+        <div class="field" style="margin-top:8px;">
+          <label>Mã gia đình</label>
+          <input id="familyCodeInput" type="text" placeholder="vd: sua-yeu-1234" autocomplete="off">
+        </div>
+        <div class="formactions">
+          <button type="button" class="ghostbtn" id="familyCodeSuggest" style="flex:1;">Gợi ý mã</button>
+          <button type="button" class="primarybtn" id="familyCodeSave" style="flex:1;">Bắt đầu đồng bộ</button>
+        </div>
+      </div>
+      <div id="familyActive" hidden>
+        <p class="footnote" style="text-align:left; margin:0;">Đang đồng bộ với mã: <strong id="familyCodeDisplay"></strong>. Nhập đúng mã này trên điện thoại kia để thấy chung dữ liệu.</p>
+        <div class="formactions">
+          <button type="button" class="ghostbtn" id="familyCodeStop" style="flex:1;">Ngừng đồng bộ, dùng 1 mình</button>
+        </div>
+      </div>
+    </section>
+
+    <p class="footnote" id="storageFootnote">Dữ liệu lưu ngay trên trình duyệt của điện thoại này, không đồng bộ với máy khác.</p>
   </main>
 
   <div class="toast" id="toast" hidden></div>
@@ -375,7 +375,8 @@
     familyCodeSave: document.getElementById('familyCodeSave'),
     familyActive: document.getElementById('familyActive'),
     familyCodeDisplay: document.getElementById('familyCodeDisplay'),
-    familyCodeStop: document.getElementById('familyCodeStop')
+    familyCodeStop: document.getElementById('familyCodeStop'),
+    storageFootnote: document.getElementById('storageFootnote')
   };
 
   var storageOk = true;
@@ -487,6 +488,9 @@
     el.familySetup.hidden = !!code;
     el.familyActive.hidden = !code;
     if(code) el.familyCodeDisplay.textContent = code;
+    el.storageFootnote.textContent = code
+      ? 'Đang đồng bộ real-time qua mã gia đình "' + code + '" — mọi thiết bị dùng cùng mã đều thấy chung dữ liệu.'
+      : 'Dữ liệu lưu ngay trên trình duyệt của điện thoại này, không đồng bộ với máy khác.';
   }
 
   function setupFamilyPanel(){

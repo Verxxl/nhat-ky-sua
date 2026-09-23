@@ -821,6 +821,7 @@
   var BABY_DOB_STORAGE = 'nhatkysua.baby_dob.v1';
   var AI_AUTO_STORAGE = 'nhatkysua.ai_auto.v1';
   var GEMINI_MODEL = 'gemini-3.6-flash';
+  var AI_PERSONA = 'Bạn là một chuyên gia chăm sóc trẻ sơ sinh và tư vấn dinh dưỡng nhi khoa giàu kinh nghiệm, chuyên hỗ trợ các bậc cha mẹ Việt Nam về lịch bú, lượng sữa phù hợp theo từng giai đoạn phát triển của bé, và cách nhận biết các dấu hiệu bất thường khi bú. ';
   var AI_SUGGESTIONS = [
     'Bé bú vậy có đủ không?',
     'So với 7 ngày trước thế nào?',
@@ -910,9 +911,10 @@
     if(!question){ showToast('Nhập câu hỏi trước đã'); return; }
 
     var dob = getBabyDob();
-    var prompt = 'Bạn là trợ lý giúp cha mẹ theo dõi lượng sữa bé bú hàng ngày' + (dob ? (', bé ' + ageTextFromDob(dob)) : '') + '. ' +
-      'Dựa trên dữ liệu dưới đây, trả lời câu hỏi của phụ huynh bằng tiếng Việt, ngắn gọn, dễ hiểu, giọng thân thiện. ' +
-      'Đây không phải tư vấn y tế — nếu câu hỏi liên quan sức khỏe của bé, hãy nhắc phụ huynh hỏi thêm bác sĩ nhi khoa nếu lo lắng.\n\n' +
+    var prompt = AI_PERSONA +
+      'Dựa trên dữ liệu bú sữa dưới đây' + (dob ? (' và thông tin bé ' + ageTextFromDob(dob)) : '') + ', hãy trả lời câu hỏi của phụ huynh bằng tiếng Việt — ngắn gọn, dễ hiểu, giọng gần gũi như một chuyên gia đang tư vấn trực tiếp. ' +
+      'Nếu phù hợp, hãy đưa ra lời khuyên hoặc lưu ý cụ thể (vd: nên điều chỉnh cữ bú/lượng sữa thế nào, dấu hiệu nào cần theo dõi thêm). ' +
+      'Đây không thay thế tư vấn y tế trực tiếp — nếu câu hỏi liên quan sức khỏe của bé, hãy nhắc phụ huynh hỏi thêm bác sĩ nhi khoa nếu lo lắng.\n\n' +
       buildFeedingContext() + '\n\nCâu hỏi của phụ huynh: ' + question;
 
     setAiBusy(true);
@@ -988,10 +990,11 @@
     }
     el.aiAutoRefresh.disabled = true;
     showAiAutoMessage('Đang phân tích...', false);
-    var prompt = 'Bạn là trợ lý theo dõi việc bú sữa cho cha mẹ có em bé ' + ageTextFromDob(dob) + '. ' +
-      'Dựa trên dữ liệu bú sữa dưới đây, hãy nhận xét ngắn gọn (khoảng 3-5 câu) bằng tiếng Việt: có gì bất thường không (bú quá ít, quá nhiều, hay khoảng cách giữa các cữ bất thường so với độ tuổi của bé), và gợi ý gì cho mẹ nếu cần. ' +
-      'Nếu dữ liệu bình thường, chỉ cần nhận xét ngắn gọn tích cực, không cần tạo lo lắng không cần thiết. ' +
-      'Đây không phải tư vấn y tế — nếu có dấu hiệu đáng lo, luôn nhắc mẹ nên hỏi bác sĩ nhi khoa.\n\n' +
+    var prompt = AI_PERSONA +
+      'Em bé bạn đang theo dõi ' + ageTextFromDob(dob) + '. Dựa trên dữ liệu bú sữa dưới đây, hãy đưa ra nhận xét ngắn gọn (khoảng 3-5 câu) bằng tiếng Việt, như một chuyên gia đang theo dõi hàng ngày: ' +
+      'có gì bất thường không (bú quá ít, quá nhiều, hay khoảng cách giữa các cữ bất thường so với độ tuổi của bé), và đưa ra lời khuyên/lưu ý cụ thể cho mẹ nếu cần (vd: nên giãn hay rút ngắn cữ bú, tăng/giảm lượng sữa, dấu hiệu nào nên theo dõi thêm). ' +
+      'Nếu dữ liệu bình thường, chỉ cần nhận xét ngắn gọn tích cực kèm một lưu ý nhỏ hữu ích, không cần tạo lo lắng không cần thiết. ' +
+      'Đây không thay thế tư vấn y tế trực tiếp — nếu có dấu hiệu đáng lo, luôn nhắc mẹ nên hỏi bác sĩ nhi khoa.\n\n' +
       buildFeedingContext();
     try{
       var text = await callGemini(prompt);

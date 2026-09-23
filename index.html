@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Nhật Ký Sữa</title>
+<title>Nhật Ký Sữa Của Shyn</title>
 <meta name="description" content="Ghi lại và theo dõi lượng sữa bé bú mỗi ngày, lưu ngay trên điện thoại.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Nhật Ký Sữa">
+<meta name="apple-mobile-web-app-title" content="Sữa Của Shyn">
 <meta name="theme-color" content="#F3F5F9" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F131B" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.json">
@@ -153,7 +153,7 @@
 <div class="app">
   <header class="topbar">
     <div class="topbar-inner">
-      <h1>Nhật Ký Sữa</h1>
+      <h1>Nhật Ký Sữa Của Shyn</h1>
       <div class="daynav">
         <button class="navarrow" id="prevDay" aria-label="Ngày trước">‹</button>
         <button class="daylabel" id="dayLabel"></button>
@@ -533,25 +533,71 @@
 
     var prevDocs = allDocs.slice();
     var wasEditing = !!editingId;
+    var mergedInto = null;
+
     if(editingId){
       data.id = editingId;
       data.createdAt = editingCreatedAt || Date.now();
       var idx = allDocs.findIndex(function(d){ return d.id === editingId; });
       if(idx >= 0) allDocs[idx] = data; else allDocs.push(data);
     } else {
-      data.id = genId();
-      data.createdAt = Date.now();
-      allDocs.push(data);
+      var merge = findMergeCandidate(data);
+      if(merge){
+        var midx = allDocs.findIndex(function(d){ return d.id === merge.id; });
+        var merged = Object.assign({}, merge);
+        merged.amountMl = (Number(merge.amountMl)||0) + (Number(data.amountMl)||0);
+        var durSum = (Number(merge.durationMin)||0) + (Number(data.durationMin)||0);
+        merged.durationMin = durSum > 0 ? durSum : null;
+        if(merge.side && data.side && merge.side !== data.side) merged.side = 'both';
+        else if(!merge.side && data.side) merged.side = data.side;
+        if(new Date(data.at).getTime() < new Date(merge.at).getTime()){
+          merged.at = data.at;
+          merged.dateKey = data.dateKey;
+        }
+        merged.note = [merge.note, data.note].filter(Boolean).join('; ');
+        merged.updatedAt = Date.now();
+        allDocs[midx] = merged;
+        mergedInto = merged;
+      } else {
+        data.id = genId();
+        data.createdAt = Date.now();
+        allDocs.push(data);
+      }
     }
+
     if(saveDocs()){
-      showToast(wasEditing ? 'Đã cập nhật cữ bú' : 'Đã lưu cữ bú');
-      selectedDateKey = data.dateKey;
+      if(mergedInto){
+        showToast('Cách cữ trước dưới 30 phút, đã gộp vào cữ lúc ' + fmtTime(mergedInto.at));
+        selectedDateKey = mergedInto.dateKey;
+      } else {
+        showToast(wasEditing ? 'Đã cập nhật cữ bú' : 'Đã lưu cữ bú');
+        selectedDateKey = data.dateKey;
+      }
       resetForm();
     } else {
       allDocs = prevDocs;
       showToast('Không lưu được - bộ nhớ trình duyệt bị chặn');
     }
     renderAll();
+  }
+
+  function findMergeCandidate(newData){
+    var newTime = new Date(newData.at).getTime();
+    if(isNaN(newTime)) return null;
+    var THRESHOLD_MS = 30 * 60000;
+    var best = null;
+    var bestDiff = Infinity;
+    allDocs.forEach(function(d){
+      if(d.type !== newData.type) return;
+      var t = new Date(d.at).getTime();
+      if(isNaN(t)) return;
+      var diff = Math.abs(t - newTime);
+      if(diff <= THRESHOLD_MS && diff < bestDiff){
+        best = d;
+        bestDiff = diff;
+      }
+    });
+    return best;
   }
 
   function handleDelete(id){

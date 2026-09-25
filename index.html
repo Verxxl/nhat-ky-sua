@@ -87,6 +87,10 @@
   .card{background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:12px;}
   .card h2{font-family:var(--font-display); font-size:17px; font-weight:600; margin:0;}
 
+  .collapsible-toggle{display:flex; align-items:center; justify-content:space-between; width:100%; background:none; border:none; padding:0; cursor:pointer; font:inherit; color:inherit; text-align:left;}
+  .collapsible-toggle .chevron{width:20px; height:20px; color:var(--ink-muted); transition:transform .2s ease; flex:none;}
+  .collapsible-toggle.open .chevron{transform:rotate(90deg);}
+
   .field{display:flex; flex-direction:column; gap:7px;}
   .field label{font-size:12px; font-weight:700; color:var(--ink-muted); text-transform:uppercase; letter-spacing:.4px;}
 
@@ -164,6 +168,28 @@
   .barlabel{font-size:11px; font-weight:700; color:var(--ink-muted);}
 
   .banner{background:var(--type-pumped-soft); color:var(--ink); border:1px solid var(--border); border-radius:12px; padding:10px 12px; font-size:13px;}
+
+  .done-tone{--done:#2F8F57; --done-soft:#DFF3E5;}
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --done:#6FCB93; --done-soft:#173B26; } }
+  :root[data-theme="dark"]{ --done:#6FCB93; --done-soft:#173B26; }
+  .cardhead{display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;}
+  .badge{display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.3px; text-transform:uppercase; padding:3px 9px; border-radius:999px; margin-right:6px;}
+  .badge.free{background:var(--done-soft); color:var(--done);}
+  .badge.paid{background:var(--type-pumped-soft); color:#8A5A0A;}
+  .progress{font-size:12px; font-weight:800; color:var(--ink-muted); font-variant-numeric:tabular-nums;}
+  .tablewrap{overflow-x:auto; border:1px solid var(--border); border-radius:12px;}
+  table.vaxtable{border-collapse:collapse; width:100%; font-size:13px; min-width:560px;}
+  table.vaxtable th, table.vaxtable td{padding:9px 10px; text-align:left; vertical-align:middle; border-bottom:1px solid var(--border);}
+  table.vaxtable th{background:var(--surface-2); font-size:10.5px; text-transform:uppercase; letter-spacing:.3px; color:var(--ink-muted); font-weight:800; white-space:nowrap;}
+  table.vaxtable tr:last-child td{border-bottom:none;}
+  table.vaxtable tr.done td{background:var(--done-soft);}
+  table.vaxtable td.check{width:32px;}
+  table.vaxtable td.when{white-space:nowrap; font-weight:700; font-variant-numeric:tabular-nums;}
+  table.vaxtable td.name{font-weight:700;}
+  table.vaxtable tr.done td.name{text-decoration:line-through; text-decoration-color:var(--done); opacity:.85;}
+  .vax-checkbox{width:19px; height:19px; accent-color:var(--done); cursor:pointer;}
+  table.vaxtable td.datecell input{width:130px; border:1.5px solid var(--border); background:var(--surface-2); color:var(--ink); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:var(--font-body);}
+  table.vaxtable td.datecell input:disabled{opacity:.4;}
   .footnote{color:var(--ink-muted); font-size:12px; text-align:center; line-height:1.5;}
 
   .toast{position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:10px 16px; border-radius:999px; font-size:13.5px; font-weight:700; box-shadow:var(--shadow); z-index:20; max-width:calc(100% - 32px); text-align:center;}
@@ -188,6 +214,7 @@
     <div class="tabbar">
       <button type="button" class="tabbtn active" id="tabMilkBtn">Sữa</button>
       <button type="button" class="tabbtn" id="tabDiaperBtn">Bỉm</button>
+      <button type="button" class="tabbtn" id="tabVaccineBtn">Vắc xin</button>
     </div>
   </header>
 
@@ -195,23 +222,32 @@
     <div id="storageBanner" class="banner" hidden>Không lưu được dữ liệu trên thiết bị này (bộ nhớ trình duyệt bị chặn). Hãy tắt chế độ duyệt web riêng tư rồi thử lại.</div>
 
     <section class="card">
-      <h2>Thông tin của bé</h2>
-      <div class="field">
-        <label>Tiêu đề ứng dụng</label>
-        <input id="appTitleInput" type="text" placeholder="vd: Nhật Ký Sữa Của Shyn" maxlength="60">
-      </div>
-      <div class="field">
-        <label>Ngày sinh</label>
-        <input id="babyDobInput" type="date">
-      </div>
-      <p class="footnote" id="babyAgeText" style="text-align:left; margin:0;"></p>
-      <div class="field">
-        <label>Sinh khi thai được (tuần)</label>
-        <input id="babyGestWeeksInput" type="number" inputmode="numeric" min="20" max="43" placeholder="vd: 39">
-      </div>
-      <div class="field">
-        <label>Phương pháp sinh</label>
-        <div class="chiprow" id="birthMethodChips"></div>
+      <button type="button" class="collapsible-toggle" id="babyInfoToggle">
+        <h2>Thông tin của bé</h2>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+      <p class="footnote" id="babyInfoSummary" style="text-align:left; margin:0;" hidden></p>
+      <div id="babyInfoBody" class="stack" hidden>
+        <div class="field">
+          <label>Tiêu đề ứng dụng</label>
+          <input id="appTitleInput" type="text" placeholder="vd: Nhật Ký Sữa Của Shyn" maxlength="60">
+        </div>
+        <div class="field">
+          <label>Ngày sinh</label>
+          <input id="babyDobInput" type="date">
+        </div>
+        <p class="footnote" id="babyAgeText" style="text-align:left; margin:0;"></p>
+        <div class="field">
+          <label>Sinh khi thai được</label>
+          <div class="amountrow">
+            <input id="babyGestWeeksInput" type="number" inputmode="numeric" min="20" max="43" placeholder="tuần, vd: 39" style="flex:1;">
+            <input id="babyGestDaysInput" type="number" inputmode="numeric" min="0" max="6" placeholder="ngày, vd: 3" style="flex:1;">
+          </div>
+        </div>
+        <div class="field">
+          <label>Phương pháp sinh</label>
+          <div class="chiprow" id="birthMethodChips"></div>
+        </div>
       </div>
     </section>
 
@@ -374,6 +410,39 @@
       </section>
     </div>
 
+    <div id="panelVaccine" class="stack" hidden>
+      <section class="card">
+        <div class="cardhead">
+          <h2><span class="badge free">Miễn phí</span>Tiêm chủng mở rộng quốc gia</h2>
+          <span class="progress" id="vaxProgressFree"></span>
+        </div>
+        <p class="footnote" style="text-align:left; margin:0;">Các mũi trong Chương trình Tiêm chủng Mở rộng (TCMR), tiêm miễn phí tại trạm y tế phường/xã. Tích khi bé đã tiêm, có thể sửa ngày tiêm.</p>
+        <div class="tablewrap">
+          <table class="vaxtable" id="vaxTableFree">
+            <thead><tr><th></th><th>Thời điểm</th><th>Mũi tiêm</th><th>Phòng bệnh</th><th>Ngày tiêm</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="footnote" style="text-align:left; margin:0;">*Viêm não Nhật Bản: có ở TCMR tại nhiều địa phương, một số nơi chỉ có ở dịch vụ — hỏi trạm y tế để chắc chắn.</p>
+      </section>
+
+      <section class="card">
+        <div class="cardhead">
+          <h2><span class="badge paid">Dịch vụ</span>Vắc xin ngoài chương trình</h2>
+          <span class="progress" id="vaxProgressPaid"></span>
+        </div>
+        <p class="footnote" style="text-align:left; margin:0;">Không bắt buộc, thường tiêm tại các trung tâm tiêm chủng dịch vụ, cha mẹ cân nhắc theo tư vấn bác sĩ.</p>
+        <div class="tablewrap">
+          <table class="vaxtable" id="vaxTablePaid">
+            <thead><tr><th></th><th>Thời điểm</th><th>Vắc xin</th><th>Phòng bệnh</th><th>Ngày tiêm</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <p class="footnote">Thông tin tổng hợp mang tính tham khảo, lịch tiêm có thể thay đổi theo thời điểm, địa phương và loại vắc xin cụ thể. Đây không phải tư vấn y tế — hãy hỏi bác sĩ nhi khoa hoặc trung tâm tiêm chủng để có lịch chính xác, phù hợp nhất cho bé.</p>
+    </div>
+
     <section class="card">
       <h2>Sao lưu dữ liệu</h2>
       <p class="footnote" style="margin:0; text-align:left;">Dữ liệu chỉ lưu trên điện thoại này. Nên xuất file sao lưu định kỳ để không mất dữ liệu nếu đổi máy hoặc xóa dữ liệu Safari.</p>
@@ -476,8 +545,12 @@
     aiAskBtn: document.getElementById('aiAskBtn'),
     aiAnswer: document.getElementById('aiAnswer'),
     appTitle: document.getElementById('appTitle'),
+    babyInfoToggle: document.getElementById('babyInfoToggle'),
+    babyInfoSummary: document.getElementById('babyInfoSummary'),
+    babyInfoBody: document.getElementById('babyInfoBody'),
     appTitleInput: document.getElementById('appTitleInput'),
     babyGestWeeksInput: document.getElementById('babyGestWeeksInput'),
+    babyGestDaysInput: document.getElementById('babyGestDaysInput'),
     birthMethodChips: document.getElementById('birthMethodChips'),
     babyDobInput: document.getElementById('babyDobInput'),
     babyAgeText: document.getElementById('babyAgeText'),
@@ -495,6 +568,12 @@
     tabDiaperBtn: document.getElementById('tabDiaperBtn'),
     panelMilk: document.getElementById('panelMilk'),
     panelDiaper: document.getElementById('panelDiaper'),
+    tabVaccineBtn: document.getElementById('tabVaccineBtn'),
+    panelVaccine: document.getElementById('panelVaccine'),
+    vaxProgressFree: document.getElementById('vaxProgressFree'),
+    vaxProgressPaid: document.getElementById('vaxProgressPaid'),
+    vaxTableFree: document.getElementById('vaxTableFree'),
+    vaxTablePaid: document.getElementById('vaxTablePaid'),
     diaperStatCount: document.getElementById('diaperStatCount'),
     diaperStatLast: document.getElementById('diaperStatLast'),
     diaperCardTitle: document.getElementById('diaperCardTitle'),
@@ -691,19 +770,23 @@
       showToast('Đang đồng bộ với mã "' + v + '"');
       subscribeFamily();
       subscribeFamilyDiapers();
+      subscribeFamilyVaccines();
     });
     el.familyCodeStop.addEventListener('click', function(){
       if(fsUnsub){ fsUnsub(); fsUnsub = null; }
       if(fsDiaperUnsub){ fsDiaperUnsub(); fsDiaperUnsub = null; }
+      if(fsVaccineUnsub){ fsVaccineUnsub(); fsVaccineUnsub = null; }
       try{ localStorage.removeItem(FAMILY_CODE_STORAGE); } catch(e){}
       familyCode = '';
       refreshFamilyPanel();
       el.storageBanner.hidden = true;
       loadDocs();
       loadDiapers();
+      loadVaccineStatus();
       if(!storageOk) el.storageBanner.hidden = false;
       renderAll();
       renderDiaperAll();
+      renderVaccineTables();
       showToast('Đã ngừng đồng bộ, dùng dữ liệu trên máy này');
     });
   }
@@ -1421,20 +1504,23 @@
   }
 
   function setActiveTab(tab){
-    var isMilk = tab !== 'diaper';
-    el.panelMilk.hidden = !isMilk;
-    el.panelDiaper.hidden = isMilk;
-    el.tabMilkBtn.classList.toggle('active', isMilk);
-    el.tabDiaperBtn.classList.toggle('active', !isMilk);
-    try{ localStorage.setItem(ACTIVE_TAB_STORAGE, isMilk ? 'milk' : 'diaper'); } catch(e){}
+    if(tab !== 'diaper' && tab !== 'vaccine') tab = 'milk';
+    el.panelMilk.hidden = tab !== 'milk';
+    el.panelDiaper.hidden = tab !== 'diaper';
+    el.panelVaccine.hidden = tab !== 'vaccine';
+    el.tabMilkBtn.classList.toggle('active', tab === 'milk');
+    el.tabDiaperBtn.classList.toggle('active', tab === 'diaper');
+    el.tabVaccineBtn.classList.toggle('active', tab === 'vaccine');
+    try{ localStorage.setItem(ACTIVE_TAB_STORAGE, tab); } catch(e){}
   }
 
   function setupTabs(){
     var saved = '';
     try{ saved = localStorage.getItem(ACTIVE_TAB_STORAGE) || ''; } catch(e){}
-    setActiveTab(saved === 'diaper' ? 'diaper' : 'milk');
+    setActiveTab(saved || 'milk');
     el.tabMilkBtn.addEventListener('click', function(){ setActiveTab('milk'); });
     el.tabDiaperBtn.addEventListener('click', function(){ setActiveTab('diaper'); });
+    el.tabVaccineBtn.addEventListener('click', function(){ setActiveTab('vaccine'); });
   }
 
   function setupDiaperUI(){
@@ -1447,9 +1533,150 @@
     el.diaperCancelEdit.addEventListener('click', showDiaperQuickAdd);
   }
 
+  var VACCINE_STATUS_STORAGE = 'nhatkysua.vaccine_status.v1';
+  var vaccineStatus = {};
+  var fsVaccineUnsub = null;
+
+  var VACCINE_SCHEDULE_FREE = [
+    {id:'free-1', when:'24h sau sinh', name:'Viêm gan B (mũi sơ sinh)', disease:'Viêm gan B'},
+    {id:'free-2', when:'Trong tháng đầu', name:'BCG', disease:'Lao'},
+    {id:'free-3', when:'2 tháng', name:'5 trong 1 (mũi 1) + OPV (uống, lần 1)', disease:'Bạch hầu, ho gà, uốn ván, viêm gan B, Hib, bại liệt'},
+    {id:'free-4', when:'3 tháng', name:'5 trong 1 (mũi 2) + OPV (lần 2)', disease:'— (như trên)'},
+    {id:'free-5', when:'4 tháng', name:'5 trong 1 (mũi 3) + OPV (lần 3) + IPV', disease:'— (như trên)'},
+    {id:'free-6', when:'9 tháng', name:'Sởi (mũi 1)', disease:'Sởi'},
+    {id:'free-7', when:'18 tháng', name:'DPT nhắc lại + Sởi–Rubella (MR)', disease:'Bạch hầu, ho gà, uốn ván, sởi, rubella'},
+    {id:'free-8', when:'Từ 1 tuổi*', name:'Viêm não Nhật Bản (3 mũi)', disease:'Viêm não Nhật Bản B'}
+  ];
+  var VACCINE_SCHEDULE_PAID = [
+    {id:'paid-1', when:'Từ 6 tuần', name:'Rotavirus (uống)', disease:'Tiêu chảy cấp do Rota'},
+    {id:'paid-2', when:'2–3–4th + nhắc 12–15th', name:'Phế cầu (Synflorix/Prevenar 13)', disease:'Viêm phổi, viêm màng não, viêm tai giữa'},
+    {id:'paid-3', when:'2–3–4th + nhắc 16–18th', name:'6 trong 1', disease:'Bạch hầu, ho gà, uốn ván, bại liệt, viêm gan B, Hib'},
+    {id:'paid-4', when:'Từ 6 tháng', name:'Não mô cầu BC', disease:'Viêm màng não mô cầu nhóm B, C'},
+    {id:'paid-5', when:'Từ 6 tháng', name:'Cúm mùa (nhắc mỗi năm)', disease:'Cúm'},
+    {id:'paid-6', when:'Từ 9 tháng', name:'Não mô cầu ACYW135', disease:'Viêm màng não mô cầu nhóm A, C, Y, W135'},
+    {id:'paid-7', when:'Từ 9 tháng', name:'Viêm não Nhật Bản (Imojev)', disease:'Viêm não Nhật Bản B'},
+    {id:'paid-8', when:'Từ 12 tháng', name:'Thủy đậu', disease:'Thủy đậu'},
+    {id:'paid-9', when:'Từ 12 tháng', name:'Viêm gan A (2 mũi)', disease:'Viêm gan A'},
+    {id:'paid-10', when:'12th + nhắc 4–6 tuổi', name:'Sởi–Quai bị–Rubella (MMR)', disease:'Sởi, quai bị, rubella'}
+  ];
+
+  function loadVaccineStatus(){
+    try{
+      var raw = localStorage.getItem(VACCINE_STATUS_STORAGE);
+      vaccineStatus = raw ? JSON.parse(raw) : {};
+      if(!vaccineStatus || typeof vaccineStatus !== 'object') vaccineStatus = {};
+    } catch(e){ vaccineStatus = {}; }
+  }
+
+  function saveVaccineStatus(){
+    try{ localStorage.setItem(VACCINE_STATUS_STORAGE, JSON.stringify(vaccineStatus)); return true; } catch(e){ return false; }
+  }
+
+  function familyVaccineRef(){
+    var db = initFirebase();
+    if(!db || !familyCode) return null;
+    return db.collection('families').doc(familyCode).collection('vaccines').doc('status');
+  }
+
+  function subscribeFamilyVaccines(){
+    var ref = familyVaccineRef();
+    if(!ref) return;
+    if(fsVaccineUnsub){ fsVaccineUnsub(); fsVaccineUnsub = null; }
+    fsVaccineUnsub = ref.onSnapshot(function(snap){
+      vaccineStatus = (snap.exists && snap.data() && snap.data().items) ? snap.data().items : {};
+      renderVaccineTables();
+    }, function(err){
+      showToast('Lỗi đồng bộ vắc xin: ' + (err && err.message ? err.message : ''));
+    });
+  }
+
+  function setVaccineEntry(id, entry){
+    if(isFamilyMode()){
+      var ref = familyVaccineRef();
+      if(!ref){ showToast('Chưa kết nối được đồng bộ'); return; }
+      var field = {};
+      field['items.' + id] = entry;
+      field.updatedAt = Date.now();
+      ref.set(field, {merge:true}).catch(function(e){
+        showToast('Không lưu được: ' + (e && e.message ? e.message : 'lỗi'));
+      });
+      return;
+    }
+    var prevEntry = vaccineStatus[id];
+    vaccineStatus[id] = entry;
+    if(!saveVaccineStatus()){
+      if(prevEntry === undefined) delete vaccineStatus[id]; else vaccineStatus[id] = prevEntry;
+      showToast('Không lưu được - bộ nhớ trình duyệt bị chặn');
+      return;
+    }
+    renderVaccineTables();
+  }
+
+  function renderVaccineTable(tableEl, progressEl, schedule){
+    var tbody = tableEl.querySelector('tbody');
+    tbody.innerHTML = '';
+    var doneCount = 0;
+    schedule.forEach(function(v){
+      var entry = vaccineStatus[v.id] || {};
+      if(entry.done) doneCount++;
+
+      var tr = document.createElement('tr');
+      tr.className = entry.done ? 'done' : '';
+
+      var tdCheck = document.createElement('td');
+      tdCheck.className = 'check';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'vax-checkbox';
+      cb.checked = !!entry.done;
+      tdCheck.appendChild(cb);
+
+      var tdWhen = document.createElement('td');
+      tdWhen.className = 'when';
+      tdWhen.textContent = v.when;
+
+      var tdName = document.createElement('td');
+      tdName.className = 'name';
+      tdName.textContent = v.name;
+
+      var tdDisease = document.createElement('td');
+      tdDisease.textContent = v.disease;
+
+      var tdDate = document.createElement('td');
+      tdDate.className = 'datecell';
+      var dateInput = document.createElement('input');
+      dateInput.type = 'date';
+      dateInput.disabled = !entry.done;
+      dateInput.value = entry.date || '';
+      tdDate.appendChild(dateInput);
+
+      cb.addEventListener('change', function(){
+        var newEntry = { done: cb.checked, date: entry.date || '' };
+        if(cb.checked && !newEntry.date) newEntry.date = todayKey();
+        setVaccineEntry(v.id, newEntry);
+      });
+      dateInput.addEventListener('change', function(){
+        setVaccineEntry(v.id, { done: entry.done, date: dateInput.value });
+      });
+
+      tr.appendChild(tdCheck);
+      tr.appendChild(tdWhen);
+      tr.appendChild(tdName);
+      tr.appendChild(tdDisease);
+      tr.appendChild(tdDate);
+      tbody.appendChild(tr);
+    });
+    progressEl.textContent = 'Đã tiêm ' + doneCount + '/' + schedule.length;
+  }
+
+  function renderVaccineTables(){
+    renderVaccineTable(el.vaxTableFree, el.vaxProgressFree, VACCINE_SCHEDULE_FREE);
+    renderVaccineTable(el.vaxTablePaid, el.vaxProgressPaid, VACCINE_SCHEDULE_PAID);
+  }
+
   function handleExport(){
     try{
-      var payload = { feedings: allDocs, diapers: allDiapers, exportedAt: new Date().toISOString() };
+      var payload = { feedings: allDocs, diapers: allDiapers, vaccines: vaccineStatus, exportedAt: new Date().toISOString() };
       var blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
       var url = URL.createObjectURL(blob);
       var a = document.createElement('a');
@@ -1471,19 +1698,22 @@
     reader.onload = function(){
       try{
         var parsed = JSON.parse(String(reader.result));
-        var feedArr, diaperArr;
+        var feedArr, diaperArr, vaxObj;
         if(Array.isArray(parsed)){
           feedArr = parsed;
           diaperArr = [];
+          vaxObj = {};
         } else if(parsed && typeof parsed === 'object'){
           feedArr = Array.isArray(parsed.feedings) ? parsed.feedings : [];
           diaperArr = Array.isArray(parsed.diapers) ? parsed.diapers : [];
+          vaxObj = (parsed.vaccines && typeof parsed.vaccines === 'object') ? parsed.vaccines : {};
         } else {
           throw new Error('bad format');
         }
 
         var prevDocs = allDocs.slice();
         var prevDiapers = allDiapers.slice();
+        var prevVaccines = Object.assign({}, vaccineStatus);
         var byId = {};
         allDocs.forEach(function(d){ byId[d.id] = d; });
         feedArr.forEach(function(d){ if(d && d.id && d.at) byId[d.id] = d; });
@@ -1494,20 +1724,25 @@
         diaperArr.forEach(function(d){ if(d && d.id && d.at) diaperById[d.id] = d; });
         allDiapers = Object.keys(diaperById).map(function(k){ return diaperById[k]; });
 
+        vaccineStatus = Object.assign({}, vaccineStatus, vaxObj);
+
         if(isFamilyMode()){
-          importFamily(feedArr, diaperArr);
+          importFamily(feedArr, diaperArr, vaxObj);
         } else {
           var okFeed = saveDocs();
           var okDiaper = saveDiapers();
-          if(okFeed && okDiaper){
+          var okVax = saveVaccineStatus();
+          if(okFeed && okDiaper && okVax){
             showToast('Đã nhập dữ liệu (' + feedArr.length + ' cữ bú, ' + diaperArr.length + ' lần thay bỉm)');
           } else {
             allDocs = prevDocs;
             allDiapers = prevDiapers;
+            vaccineStatus = prevVaccines;
             showToast('Không nhập được - bộ nhớ trình duyệt bị chặn');
           }
           renderAll();
           renderDiaperAll();
+          renderVaccineTables();
         }
       } catch(e){
         showToast('File không hợp lệ');
@@ -1516,14 +1751,15 @@
     reader.readAsText(file);
   }
 
-  async function importFamily(feedArr, diaperArr){
+  async function importFamily(feedArr, diaperArr, vaxObj){
     var feedRef = familyFeedingsRef();
     var diaperRef = familyDiapersRef();
-    if(!feedRef || !diaperRef){ showToast('Chưa kết nối được đồng bộ'); return; }
+    var vaxRef = familyVaccineRef();
+    if(!feedRef || !diaperRef || !vaxRef){ showToast('Chưa kết nối được đồng bộ'); return; }
     try{
       var validFeed = feedArr.filter(function(d){ return d && d.id && d.at; });
       var validDiaper = diaperArr.filter(function(d){ return d && d.id && d.at; });
-      await Promise.all(validFeed.map(function(d){
+      var writes = validFeed.map(function(d){
         var copy = Object.assign({}, d);
         var id = copy.id;
         delete copy.id;
@@ -1533,7 +1769,11 @@
         var id = copy.id;
         delete copy.id;
         return diaperRef.doc(id).set(copy);
-      })));
+      }));
+      if(vaxObj && Object.keys(vaxObj).length){
+        writes.push(vaxRef.set({ items: vaxObj, updatedAt: Date.now() }, {merge:true}));
+      }
+      await Promise.all(writes);
       showToast('Đã nhập dữ liệu (' + validFeed.length + ' cữ bú, ' + validDiaper.length + ' lần thay bỉm)');
     } catch(e){
       showToast('Không nhập được: ' + (e && e.message ? e.message : 'lỗi'));
@@ -1543,8 +1783,10 @@
   var GEMINI_KEY_STORAGE = 'nhatkysua.gemini_key.v1';
   var BABY_DOB_STORAGE = 'nhatkysua.baby_dob.v1';
   var APP_TITLE_STORAGE = 'nhatkysua.app_title.v1';
+  var BABY_INFO_OPEN_STORAGE = 'nhatkysua.baby_info_open.v1';
   var DEFAULT_APP_TITLE = 'Nhật Ký Sữa Của Shyn';
   var BABY_GEST_WEEKS_STORAGE = 'nhatkysua.baby_gest_weeks.v1';
+  var BABY_GEST_DAYS_STORAGE = 'nhatkysua.baby_gest_days.v1';
   var BABY_BIRTH_METHOD_STORAGE = 'nhatkysua.baby_birth_method.v1';
   var BIRTH_METHODS = [
     {key:'vaginal', label:'Đẻ thường'},
@@ -1650,6 +1892,10 @@
     try{ return localStorage.getItem(BABY_GEST_WEEKS_STORAGE) || ''; } catch(e){ return ''; }
   }
 
+  function getGestDays(){
+    try{ return localStorage.getItem(BABY_GEST_DAYS_STORAGE) || ''; } catch(e){ return ''; }
+  }
+
   function getBirthMethod(){
     try{ return localStorage.getItem(BABY_BIRTH_METHOD_STORAGE) || ''; } catch(e){ return ''; }
   }
@@ -1664,8 +1910,11 @@
     var dob = getBabyDob();
     if(dob) parts.push('Bé ' + ageTextFromDob(dob));
     var gw = Number(getGestWeeks());
+    var gd = Number(getGestDays()) || 0;
     if(gw > 0){
-      parts.push('sinh khi thai được ' + gw + ' tuần' + (gw < 37 ? (' (sinh non, thiếu khoảng ' + (37 - gw) + ' tuần so với đủ tháng)') : ' (đủ tháng)'));
+      var totalGestDays = gw*7 + gd;
+      var termNote = totalGestDays >= 259 ? 'đủ tháng' : ('sinh non, thiếu khoảng ' + Math.ceil((259 - totalGestDays)/7) + ' tuần so với đủ tháng');
+      parts.push('sinh khi thai được ' + gw + ' tuần' + (gd ? (' ' + gd + ' ngày') : '') + ' (' + termNote + ')');
     }
     var bm = getBirthMethod();
     if(bm) parts.push(birthMethodLabel(bm).toLowerCase());
@@ -1853,12 +2102,42 @@
       try{ localStorage.setItem(BABY_GEST_WEEKS_STORAGE, el.babyGestWeeksInput.value); } catch(e){}
       renderAiAutoBody();
     });
+    el.babyGestDaysInput.value = getGestDays();
+    el.babyGestDaysInput.addEventListener('change', function(){
+      try{ localStorage.setItem(BABY_GEST_DAYS_STORAGE, el.babyGestDaysInput.value); } catch(e){}
+      renderAiAutoBody();
+    });
 
     babyBirthMethod = getBirthMethod();
     renderBirthMethodChips();
 
     el.aiAutoRefresh.addEventListener('click', function(){ runAutoAnalysis(true); });
     renderAiAutoBody();
+    setupBabyInfoToggle();
+  }
+
+  function refreshBabyInfoSummary(){
+    var text = buildBabyProfileText();
+    el.babyInfoSummary.textContent = text ? (text + ' Chạm để sửa.') : 'Chưa có thông tin — chạm để nhập.';
+  }
+
+  function setBabyInfoOpen(open){
+    el.babyInfoBody.hidden = !open;
+    el.babyInfoSummary.hidden = open;
+    el.babyInfoToggle.classList.toggle('open', open);
+    if(!open) refreshBabyInfoSummary();
+    try{ localStorage.setItem(BABY_INFO_OPEN_STORAGE, open ? '1' : '0'); } catch(e){}
+  }
+
+  function setupBabyInfoToggle(){
+    var saved = '';
+    try{ saved = localStorage.getItem(BABY_INFO_OPEN_STORAGE) || ''; } catch(e){}
+    var defaultOpen = !getBabyDob();
+    var isOpen = saved === '1' ? true : (saved === '0' ? false : defaultOpen);
+    setBabyInfoOpen(isOpen);
+    el.babyInfoToggle.addEventListener('click', function(){
+      setBabyInfoOpen(el.babyInfoBody.hidden);
+    });
   }
 
   function renderBirthMethodChips(){
@@ -1907,9 +2186,11 @@
     if(familyCode){
       subscribeFamily();
       subscribeFamilyDiapers();
+      subscribeFamilyVaccines();
     } else {
       loadDocs();
       loadDiapers();
+      loadVaccineStatus();
       if(!storageOk) el.storageBanner.hidden = false;
     }
     resetForm();
@@ -1917,6 +2198,7 @@
     setupUI();
     renderAll();
     renderDiaperAll();
+    renderVaccineTables();
   }
 
   boot();

@@ -31,6 +31,9 @@
     --type-pumped:#B9821F;
     --type-pumped-soft:#FBF0DD;
     --type-formula:#2F8F8C;
+    --diaper-wet:#3D8BC7;
+    --diaper-dirty:#8B5E3C;
+    --diaper-both:#8B5FBF;
     --danger:#D0483F;
     --shadow:0 1px 2px rgba(30,38,50,.06), 0 8px 24px -12px rgba(30,38,50,.18);
     --font-display:'Fraunces', Georgia, 'Times New Roman', serif;
@@ -43,6 +46,7 @@
       --bg:#0F131B; --surface:#1A202B; --surface-2:#1F2632; --border:#2B3341;
       --ink:#EDF0F4; --ink-muted:#9AA5B5; --accent:#8B9BFF; --accent-ink:#12162A;
       --type-direct:#E98CAB; --type-pumped:#E3AC4F; --type-pumped-soft:#3A2E1B; --type-formula:#5FBDB9;
+      --diaper-wet:#6FB3E8; --diaper-dirty:#C99567; --diaper-both:#B48DE0;
       --danger:#E8776D; --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
     }
   }
@@ -50,6 +54,7 @@
     --bg:#0F131B; --surface:#1A202B; --surface-2:#1F2632; --border:#2B3341;
     --ink:#EDF0F4; --ink-muted:#9AA5B5; --accent:#8B9BFF; --accent-ink:#12162A;
     --type-direct:#E98CAB; --type-pumped:#E3AC4F; --type-pumped-soft:#3A2E1B; --type-formula:#5FBDB9;
+    --diaper-wet:#6FB3E8; --diaper-dirty:#C99567; --diaper-both:#B48DE0;
     --danger:#E8776D; --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
   }
 
@@ -92,7 +97,25 @@
   .chip.active.type-direct{background:var(--type-direct);}
   .chip.active.type-pumped{background:var(--type-pumped);}
   .chip.active.type-formula{background:var(--type-formula);}
+  .chip.active.diaper-wet{background:var(--diaper-wet);}
+  .chip.active.diaper-dirty{background:var(--diaper-dirty);}
+  .chip.active.diaper-both{background:var(--diaper-both);}
   .chip.preset{padding:7px 12px; font-variant-numeric:tabular-nums;}
+
+  .tabbar{display:flex; gap:8px; margin-top:10px;}
+  .tabbtn{flex:1; padding:10px; border-radius:12px; border:1.5px solid var(--border); background:var(--surface-2); color:var(--ink-muted); font-weight:800; font-size:14px; font-family:var(--font-body); cursor:pointer;}
+  .tabbtn.active{background:var(--accent); color:var(--accent-ink); border-color:transparent;}
+  .stack{display:flex; flex-direction:column; gap:16px;}
+
+  .taprow{display:flex; gap:10px;}
+  .tapbtn{flex:1; display:flex; flex-direction:column; align-items:center; gap:8px; padding:16px 8px; border-radius:16px; border:none; cursor:pointer; font-family:var(--font-body); color:#fff;}
+  .tapbtn .lbl{font-weight:800; font-size:14px;}
+  .tapbtn .sub{font-size:10.5px; opacity:.85; font-weight:600;}
+  .tapbtn.wet{background:var(--diaper-wet);}
+  .tapbtn.dirty{background:var(--diaper-dirty);}
+  .tapbtn.both{background:var(--diaper-both);}
+  .tapbtn:active{transform:scale(.97);}
+  .tapicon{width:24px; height:24px;}
 
   .amountrow{display:flex; align-items:stretch; gap:10px;}
   .stepbtn{width:44px; flex:none; border:1.5px solid var(--border); background:var(--surface-2); color:var(--ink); border-radius:12px; font-size:20px; font-weight:700; cursor:pointer;}
@@ -162,16 +185,13 @@
         <button class="navarrow" id="nextDay" aria-label="Ngày sau">›</button>
       </div>
     </div>
-    <div class="summary" id="summary">
-      <div class="stat"><span class="n" id="statCount">0</span><span class="l">cữ hôm nay</span></div>
-      <div class="divider"></div>
-      <div class="stat"><span class="n" id="statMl">0 ml</span><span class="l">tổng lượng</span></div>
-      <div class="divider"></div>
-      <div class="lastfed"><span class="n" id="statLast">–</span><span class="l">cữ gần nhất</span></div>
+    <div class="tabbar">
+      <button type="button" class="tabbtn active" id="tabMilkBtn">Sữa</button>
+      <button type="button" class="tabbtn" id="tabDiaperBtn">Bỉm</button>
     </div>
   </header>
 
-  <main style="display:flex; flex-direction:column; gap:16px;">
+  <main class="stack">
     <div id="storageBanner" class="banner" hidden>Không lưu được dữ liệu trên thiết bị này (bộ nhớ trình duyệt bị chặn). Hãy tắt chế độ duyệt web riêng tư rồi thử lại.</div>
 
     <section class="card">
@@ -182,6 +202,15 @@
       </div>
       <p class="footnote" id="babyAgeText" style="text-align:left; margin:0;"></p>
     </section>
+
+    <div id="panelMilk" class="stack">
+    <div class="summary" id="summary">
+      <div class="stat"><span class="n" id="statCount">0</span><span class="l">cữ hôm nay</span></div>
+      <div class="divider"></div>
+      <div class="stat"><span class="n" id="statMl">0 ml</span><span class="l">tổng lượng</span></div>
+      <div class="divider"></div>
+      <div class="lastfed"><span class="n" id="statLast">–</span><span class="l">cữ gần nhất</span></div>
+    </div>
 
     <section class="card formcard">
       <h2 id="formTitle">Thêm cữ bú</h2>
@@ -240,7 +269,7 @@
 
     <section class="card">
       <h2>AI tự phân tích hàng ngày</h2>
-      <p class="footnote" style="text-align:left; margin:0;">Dựa trên ngày tuổi của bé và lượng sữa đã ghi, AI tự đưa ra nhận xét mỗi ngày (dùng chung API key ở mục bên dưới).</p>
+      <p class="footnote" style="text-align:left; margin:0;">Kết hợp cữ bú và các lần thay bỉm để AI tự đưa ra nhận xét mỗi ngày, như một chuyên gia sức khỏe nhi (dùng chung API key ở mục bên dưới).</p>
       <div id="aiAutoBody"></div>
       <div class="formactions">
         <button type="button" class="ghostbtn" id="aiAutoRefresh" style="flex:1;" hidden>Phân tích lại</button>
@@ -248,9 +277,9 @@
     </section>
 
     <section class="card">
-      <h2>Hỏi AI về lượng sữa</h2>
+      <h2>Hỏi AI về bé</h2>
       <div id="aiKeySetup">
-        <p class="footnote" style="margin:0; text-align:left;">Dùng API key miễn phí của Google Gemini để AI đọc dữ liệu bú của bé và trả lời câu hỏi. Lấy key tại <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent); font-weight:700;">aistudio.google.com/apikey</a> (đăng nhập Google → "Create API key", không cần thẻ). Key chỉ lưu trên điện thoại này, không gửi cho ai khác.</p>
+        <p class="footnote" style="margin:0; text-align:left;">Dùng API key miễn phí của Google Gemini để AI đọc dữ liệu bú sữa + thay bỉm của bé và trả lời câu hỏi. Lấy key tại <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent); font-weight:700;">aistudio.google.com/apikey</a> (đăng nhập Google → "Create API key", không cần thẻ). Key chỉ lưu trên điện thoại này, không gửi cho ai khác.</p>
         <div class="field" style="margin-top:8px;">
           <label>API key (Gemini)</label>
           <input id="aiKeyInput" type="password" placeholder="Dán API key vào đây" autocomplete="off">
@@ -268,8 +297,70 @@
         </div>
         <div id="aiAnswer" class="banner" hidden></div>
       </div>
-      <p class="footnote" style="text-align:left; margin-top:2px;">AI có thể trả lời chưa chính xác — đây không phải tư vấn y tế, hãy hỏi bác sĩ nhi khoa nếu bạn lo lắng về việc bú của bé.</p>
+      <p class="footnote" style="text-align:left; margin-top:2px;">AI có thể trả lời chưa chính xác — đây không phải tư vấn y tế, hãy hỏi bác sĩ nhi khoa nếu bạn lo lắng về bé.</p>
     </section>
+    </div>
+
+    <div id="panelDiaper" class="stack" hidden>
+      <div class="summary" id="diaperSummary">
+        <div class="stat"><span class="n" id="diaperStatCount">0</span><span class="l">lần hôm nay</span></div>
+        <div class="divider"></div>
+        <div class="lastfed" style="flex:1;"><span class="n" id="diaperStatLast">–</span><span class="l">lần gần nhất</span></div>
+      </div>
+
+      <section class="card">
+        <h2 id="diaperCardTitle">Chạm để ghi lại — dùng giờ hiện tại</h2>
+        <div id="diaperQuickAdd">
+          <div class="taprow">
+            <button type="button" class="tapbtn wet" id="diaperBtnWet">
+              <svg class="tapicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3.5 4 6 7.5 6 11a6 6 0 0 1-12 0c0-3.5 2.5-7 6-11z"/></svg>
+              <span class="lbl">Tè</span>
+              <span class="sub">chỉ ướt</span>
+            </button>
+            <button type="button" class="tapbtn dirty" id="diaperBtnDirty">
+              <svg class="tapicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4-1 7-4 7-8 0-3-2-4-2-6 0 2-1 3-3 3s-2-2-2-4c-2 2-2 5-2 5-2 0-3-1-3-3-1 2-2 4-2 6 0 4 3 7 7 7z"/></svg>
+              <span class="lbl">Ị</span>
+              <span class="sub">có phân</span>
+            </button>
+            <button type="button" class="tapbtn both" id="diaperBtnBoth">
+              <svg class="tapicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3.5c2.5 3 4 5 4 7.5a4 4 0 0 1-8 0c0-2.5 1.5-4.5 4-7.5z"/><path d="M18 12c1.5 2 3 4 3 6a3 3 0 1 1-6 0c0-2 1.5-4 3-6z"/></svg>
+              <span class="lbl">Cả hai</span>
+              <span class="sub">tè + ị</span>
+            </button>
+          </div>
+          <p class="footnote" style="margin:8px 0 0;">Chạm vào một dòng trong danh sách bên dưới nếu cần sửa giờ, đổi loại hoặc thêm ghi chú (vd: phân có màu lạ, khác mọi lần).</p>
+        </div>
+        <div id="diaperEditForm" hidden>
+          <div class="field">
+            <label>Loại</label>
+            <div class="chiprow" id="diaperTypeChips"></div>
+          </div>
+          <div class="field">
+            <label>Thời điểm</label>
+            <input id="diaperTimeInput" type="datetime-local">
+          </div>
+          <div class="field">
+            <label>Ghi chú (không bắt buộc)</label>
+            <input id="diaperNoteInput" type="text" placeholder="vd: phân xanh, có chất nhầy, khác mọi lần...">
+          </div>
+          <div class="formactions">
+            <button type="button" class="ghostbtn" id="diaperCancelEdit" style="flex:1;">Hủy</button>
+            <button type="button" class="primarybtn" id="diaperSaveBtn" style="flex:1;">Lưu</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 id="diaperListTitle">Các lần thay bỉm</h2>
+        <div class="feedlist" id="diaperList"></div>
+        <p class="empty" id="diaperEmptyState" hidden>Chưa có lần thay bỉm nào trong ngày này.</p>
+      </section>
+
+      <section class="card">
+        <h2>7 ngày gần đây</h2>
+        <div class="chart" id="diaperWeekChart"></div>
+      </section>
+    </div>
 
     <section class="card">
       <h2>Sao lưu dữ liệu</h2>
@@ -313,6 +404,8 @@
   "use strict";
 
   var STORAGE_KEY = 'nhatkysua.feedings.v1';
+  var DIAPER_STORAGE_KEY = 'nhatkysua.diapers.v1';
+  var ACTIVE_TAB_STORAGE = 'nhatkysua.active_tab.v1';
 
   var TYPES = [
     {key:'direct', label:'Bú mẹ trực tiếp', cls:'type-direct', color:'var(--type-direct)'},
@@ -326,6 +419,11 @@
   ];
   var AMOUNT_PRESET_OFFSETS = [-20,-10,0,10,20,30];
   var WEEKDAY_SHORT = ['CN','T2','T3','T4','T5','T6','T7'];
+  var DIAPER_TYPES = [
+    {key:'wet', label:'Tè', cls:'diaper-wet', color:'var(--diaper-wet)'},
+    {key:'dirty', label:'Ị', cls:'diaper-dirty', color:'var(--diaper-dirty)'},
+    {key:'both', label:'Cả hai', cls:'diaper-both', color:'var(--diaper-both)'}
+  ];
 
   var el = {
     dayLabel: document.getElementById('dayLabel'),
@@ -376,18 +474,46 @@
     familyActive: document.getElementById('familyActive'),
     familyCodeDisplay: document.getElementById('familyCodeDisplay'),
     familyCodeStop: document.getElementById('familyCodeStop'),
-    storageFootnote: document.getElementById('storageFootnote')
+    storageFootnote: document.getElementById('storageFootnote'),
+    tabMilkBtn: document.getElementById('tabMilkBtn'),
+    tabDiaperBtn: document.getElementById('tabDiaperBtn'),
+    panelMilk: document.getElementById('panelMilk'),
+    panelDiaper: document.getElementById('panelDiaper'),
+    diaperStatCount: document.getElementById('diaperStatCount'),
+    diaperStatLast: document.getElementById('diaperStatLast'),
+    diaperCardTitle: document.getElementById('diaperCardTitle'),
+    diaperQuickAdd: document.getElementById('diaperQuickAdd'),
+    diaperBtnWet: document.getElementById('diaperBtnWet'),
+    diaperBtnDirty: document.getElementById('diaperBtnDirty'),
+    diaperBtnBoth: document.getElementById('diaperBtnBoth'),
+    diaperEditForm: document.getElementById('diaperEditForm'),
+    diaperTypeChips: document.getElementById('diaperTypeChips'),
+    diaperTimeInput: document.getElementById('diaperTimeInput'),
+    diaperNoteInput: document.getElementById('diaperNoteInput'),
+    diaperCancelEdit: document.getElementById('diaperCancelEdit'),
+    diaperSaveBtn: document.getElementById('diaperSaveBtn'),
+    diaperListTitle: document.getElementById('diaperListTitle'),
+    diaperList: document.getElementById('diaperList'),
+    diaperEmptyState: document.getElementById('diaperEmptyState'),
+    diaperWeekChart: document.getElementById('diaperWeekChart')
   };
 
   var storageOk = true;
   var allDocs = [];
+  var allDiapers = [];
   var familyCode = '';
   var fsDb = null;
   var fsUnsub = null;
+  var fsDiaperUnsub = null;
   var selectedDateKey = todayKey();
   var editingId = null;
   var editingCreatedAt = null;
   var formState = { type:'direct', side:'left' };
+  var diaperEditingId = null;
+  var diaperEditingCreatedAt = null;
+  var diaperFormState = { type: 'wet' };
+  var diaperDeleteConfirmId = null;
+  var diaperDeleteConfirmTimer = null;
   var deleteConfirmId = null;
   var deleteConfirmTimer = null;
   var toastTimer = null;
@@ -436,6 +562,28 @@
     }
   }
 
+  function loadDiapers(){
+    try{
+      var raw = localStorage.getItem(DIAPER_STORAGE_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      if(!Array.isArray(arr)) arr = [];
+      arr.sort(function(a,b){ return (b.at||'').localeCompare(a.at||''); });
+      allDiapers = arr;
+    } catch(e){
+      allDiapers = [];
+    }
+  }
+  function saveDiapers(){
+    try{
+      allDiapers.sort(function(a,b){ return (b.at||'').localeCompare(a.at||''); });
+      localStorage.setItem(DIAPER_STORAGE_KEY, JSON.stringify(allDiapers));
+      return true;
+    } catch(e){
+      el.storageBanner.hidden = false;
+      return false;
+    }
+  }
+
   function getFamilyCode(){
     try{ return localStorage.getItem(FAMILY_CODE_STORAGE) || ''; } catch(e){ return ''; }
   }
@@ -477,6 +625,25 @@
     });
   }
 
+  function familyDiapersRef(){
+    var db = initFirebase();
+    if(!db || !familyCode) return null;
+    return db.collection('families').doc(familyCode).collection('diapers');
+  }
+
+  function subscribeFamilyDiapers(){
+    var ref = familyDiapersRef();
+    if(!ref) return;
+    if(fsDiaperUnsub){ fsDiaperUnsub(); fsDiaperUnsub = null; }
+    fsDiaperUnsub = ref.onSnapshot(function(snap){
+      allDiapers = snap.docs.map(function(d){ return Object.assign({id: d.id}, d.data()); });
+      allDiapers.sort(function(a,b){ return (b.at||'').localeCompare(a.at||''); });
+      renderDiaperAll();
+    }, function(err){
+      showToast('Lỗi đồng bộ bỉm: ' + (err && err.message ? err.message : ''));
+    });
+  }
+
   function suggestFamilyCode(){
     var words = ['sua','yeu','thuong','nha','vui','nang','mai','be'];
     var pick = function(){ return words[Math.floor(Math.random()*words.length)]; };
@@ -507,16 +674,20 @@
       refreshFamilyPanel();
       showToast('Đang đồng bộ với mã "' + v + '"');
       subscribeFamily();
+      subscribeFamilyDiapers();
     });
     el.familyCodeStop.addEventListener('click', function(){
       if(fsUnsub){ fsUnsub(); fsUnsub = null; }
+      if(fsDiaperUnsub){ fsDiaperUnsub(); fsDiaperUnsub = null; }
       try{ localStorage.removeItem(FAMILY_CODE_STORAGE); } catch(e){}
       familyCode = '';
       refreshFamilyPanel();
       el.storageBanner.hidden = true;
       loadDocs();
+      loadDiapers();
       if(!storageOk) el.storageBanner.hidden = false;
       renderAll();
+      renderDiaperAll();
       showToast('Đã ngừng đồng bộ, dùng dữ liệu trên máy này');
     });
   }
@@ -943,6 +1114,7 @@
       col.addEventListener('click', function(){
         selectedDateKey = key;
         renderAll();
+        renderDiaperAll();
       });
       el.weekChart.appendChild(col);
     });
@@ -955,9 +1127,314 @@
     renderChart();
   }
 
+  function diaperTypeInfo(key){
+    for(var i=0;i<DIAPER_TYPES.length;i++){ if(DIAPER_TYPES[i].key===key) return DIAPER_TYPES[i]; }
+    return DIAPER_TYPES[0];
+  }
+
+  function renderDiaperTypeChips(){
+    el.diaperTypeChips.innerHTML = '';
+    DIAPER_TYPES.forEach(function(t){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip ' + t.cls + (diaperFormState.type===t.key ? ' active' : '');
+      b.innerHTML = '<span class="dot" style="background:'+t.color+'"></span>' + t.label;
+      b.addEventListener('click', function(){
+        diaperFormState.type = t.key;
+        renderDiaperTypeChips();
+      });
+      el.diaperTypeChips.appendChild(b);
+    });
+  }
+
+  function showDiaperQuickAdd(){
+    diaperEditingId = null;
+    diaperEditingCreatedAt = null;
+    el.diaperCardTitle.textContent = 'Chạm để ghi lại — dùng giờ hiện tại';
+    el.diaperQuickAdd.hidden = false;
+    el.diaperEditForm.hidden = true;
+  }
+
+  function showDiaperEditForm(doc){
+    diaperEditingId = doc.id;
+    diaperEditingCreatedAt = doc.createdAt || Date.now();
+    diaperFormState = { type: doc.type || 'wet' };
+    el.diaperTimeInput.value = doc.at || nowLocalInputValue();
+    el.diaperNoteInput.value = doc.note || '';
+    el.diaperCardTitle.textContent = 'Sửa lần thay bỉm';
+    el.diaperQuickAdd.hidden = true;
+    el.diaperEditForm.hidden = false;
+    renderDiaperTypeChips();
+    el.diaperCardTitle.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+
+  function handleDiaperQuickLog(type){
+    var data = {
+      at: nowLocalInputValue(),
+      dateKey: todayKey(),
+      type: type,
+      note: '',
+      updatedAt: Date.now()
+    };
+    if(isFamilyMode()){
+      quickLogDiaperFamily(data, type);
+      return;
+    }
+    data.id = genId();
+    data.createdAt = Date.now();
+    allDiapers.push(data);
+    if(saveDiapers()){
+      showToast('Đã ghi lúc ' + fmtTime(data.at) + ' — ' + diaperTypeInfo(type).label);
+    } else {
+      allDiapers = allDiapers.filter(function(d){ return d.id !== data.id; });
+      showToast('Không lưu được - bộ nhớ trình duyệt bị chặn');
+    }
+    renderDiaperAll();
+  }
+
+  async function quickLogDiaperFamily(data, type){
+    var ref = familyDiapersRef();
+    if(!ref){ showToast('Chưa kết nối được đồng bộ'); return; }
+    try{
+      data.createdAt = Date.now();
+      await ref.add(data);
+      showToast('Đã ghi lúc ' + fmtTime(data.at) + ' — ' + diaperTypeInfo(type).label);
+    } catch(e){
+      showToast('Không lưu được: ' + (e && e.message ? e.message : 'lỗi'));
+    }
+  }
+
+  function handleDiaperSave(){
+    var timeVal = el.diaperTimeInput.value;
+    if(!timeVal){ showToast('Vui lòng chọn thời điểm'); return; }
+    var data = {
+      at: timeVal,
+      dateKey: timeVal.slice(0,10),
+      type: diaperFormState.type,
+      note: el.diaperNoteInput.value.trim(),
+      updatedAt: Date.now()
+    };
+    if(isFamilyMode()){
+      saveDiaperFamily(data);
+    } else {
+      saveDiaperLocal(data);
+    }
+  }
+
+  function saveDiaperLocal(data){
+    var prevDocs = allDiapers.slice();
+    if(diaperEditingId){
+      data.id = diaperEditingId;
+      data.createdAt = diaperEditingCreatedAt || Date.now();
+      var idx = allDiapers.findIndex(function(d){ return d.id === diaperEditingId; });
+      if(idx >= 0) allDiapers[idx] = data; else allDiapers.push(data);
+    } else {
+      data.id = genId();
+      data.createdAt = Date.now();
+      allDiapers.push(data);
+    }
+    if(saveDiapers()){
+      showToast('Đã lưu lần thay bỉm');
+      selectedDateKey = data.dateKey;
+      showDiaperQuickAdd();
+    } else {
+      allDiapers = prevDocs;
+      showToast('Không lưu được - bộ nhớ trình duyệt bị chặn');
+    }
+    renderDiaperAll();
+  }
+
+  async function saveDiaperFamily(data){
+    var ref = familyDiapersRef();
+    if(!ref){ showToast('Chưa kết nối được đồng bộ'); return; }
+    el.diaperSaveBtn.disabled = true;
+    try{
+      if(diaperEditingId){
+        data.createdAt = diaperEditingCreatedAt || Date.now();
+        await ref.doc(diaperEditingId).set(data);
+      } else {
+        data.createdAt = Date.now();
+        await ref.add(data);
+      }
+      showToast('Đã lưu lần thay bỉm');
+      selectedDateKey = data.dateKey;
+      showDiaperQuickAdd();
+      renderDiaperAll();
+    } catch(e){
+      showToast('Không lưu được: ' + (e && e.message ? e.message : 'lỗi'));
+    } finally {
+      el.diaperSaveBtn.disabled = false;
+    }
+  }
+
+  function handleDiaperDelete(id){
+    if(isFamilyMode()){
+      var ref = familyDiapersRef();
+      if(!ref) return;
+      ref.doc(id).delete().then(function(){
+        showToast('Đã xóa');
+        if(diaperEditingId === id) showDiaperQuickAdd();
+      }).catch(function(e){
+        showToast('Không xóa được: ' + (e && e.message ? e.message : 'lỗi'));
+      });
+      return;
+    }
+    var prevDocs = allDiapers.slice();
+    allDiapers = allDiapers.filter(function(d){ return d.id !== id; });
+    if(saveDiapers()){
+      showToast('Đã xóa');
+      if(diaperEditingId === id) showDiaperQuickAdd();
+    } else {
+      allDiapers = prevDocs;
+      showToast('Không xóa được - bộ nhớ trình duyệt bị chặn');
+    }
+    renderDiaperAll();
+  }
+
+  function renderDiaperSummary(){
+    var tKey = todayKey();
+    var todays = allDiapers.filter(function(d){ return d.dateKey === tKey; });
+    el.diaperStatCount.textContent = todays.length;
+    el.diaperStatLast.textContent = allDiapers.length ? relativeFromNow(allDiapers[0].at) : '–';
+  }
+
+  function renderDiaperList(){
+    var items = allDiapers.filter(function(d){ return d.dateKey === selectedDateKey; });
+    el.diaperListTitle.textContent = 'Các lần thay bỉm · ' + fmtDayLabel(selectedDateKey);
+    el.diaperList.innerHTML = '';
+    el.diaperEmptyState.hidden = items.length > 0;
+    items.forEach(function(doc){
+      var t = diaperTypeInfo(doc.type);
+      var row = document.createElement('div');
+      row.className = 'feedrow' + (diaperEditingId === doc.id ? ' editing' : '');
+
+      var timeEl = document.createElement('div');
+      timeEl.className = 'feedtime';
+      timeEl.textContent = fmtTime(doc.at);
+
+      var dot = document.createElement('div');
+      dot.className = 'feeddot';
+      dot.style.background = t.color;
+
+      var main = document.createElement('div');
+      main.className = 'feedmain';
+      var lbl = document.createElement('div');
+      lbl.className = 'feedamount';
+      lbl.textContent = t.label;
+      main.appendChild(lbl);
+      if(doc.note){
+        var noteEl = document.createElement('div');
+        noteEl.className = 'feednote';
+        noteEl.textContent = doc.note;
+        main.appendChild(noteEl);
+      }
+
+      var delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'feeddelete' + (diaperDeleteConfirmId === doc.id ? ' confirm' : '');
+      delBtn.setAttribute('aria-label', 'Xóa lần thay bỉm');
+      delBtn.innerHTML = diaperDeleteConfirmId === doc.id
+        ? '<span style="font-size:10px; font-weight:800;">XÓA?</span>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>';
+      delBtn.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        if(diaperDeleteConfirmId === doc.id){
+          if(diaperDeleteConfirmTimer) clearTimeout(diaperDeleteConfirmTimer);
+          diaperDeleteConfirmId = null;
+          handleDiaperDelete(doc.id);
+        } else {
+          diaperDeleteConfirmId = doc.id;
+          if(diaperDeleteConfirmTimer) clearTimeout(diaperDeleteConfirmTimer);
+          diaperDeleteConfirmTimer = setTimeout(function(){ diaperDeleteConfirmId = null; renderDiaperList(); }, 3000);
+          renderDiaperList();
+        }
+      });
+
+      row.appendChild(timeEl);
+      row.appendChild(dot);
+      row.appendChild(main);
+      row.appendChild(delBtn);
+      row.addEventListener('click', function(){ showDiaperEditForm(doc); });
+
+      el.diaperList.appendChild(row);
+    });
+  }
+
+  function renderDiaperChart(){
+    el.diaperWeekChart.innerHTML = '';
+    var days = [];
+    for(var i=6;i>=0;i--){ days.push(addDays(todayKey(), -i)); }
+    var counts = days.map(function(key){
+      return allDiapers.filter(function(d){ return d.dateKey === key; }).length;
+    });
+    var max = Math.max.apply(null, counts.concat([1]));
+    days.forEach(function(key, idx){
+      var d = keyToDate(key);
+      var col = document.createElement('button');
+      col.type = 'button';
+      col.className = 'barcol' + (key === todayKey() ? ' today' : '');
+      var val = document.createElement('div');
+      val.className = 'barval';
+      val.textContent = counts[idx] > 0 ? counts[idx] : '';
+      var track = document.createElement('div');
+      track.className = 'bartrack';
+      var fill = document.createElement('div');
+      fill.className = 'barfill';
+      var pct = Math.max(counts[idx] / max * 100, counts[idx] > 0 ? 4 : 0);
+      fill.style.height = pct + '%';
+      track.appendChild(fill);
+      var label = document.createElement('div');
+      label.className = 'barlabel';
+      label.textContent = WEEKDAY_SHORT[d.getDay()];
+      col.appendChild(val);
+      col.appendChild(track);
+      col.appendChild(label);
+      col.addEventListener('click', function(){
+        selectedDateKey = key;
+        renderAll();
+        renderDiaperAll();
+      });
+      el.diaperWeekChart.appendChild(col);
+    });
+  }
+
+  function renderDiaperAll(){
+    renderDiaperSummary();
+    renderDiaperList();
+    renderDiaperChart();
+  }
+
+  function setActiveTab(tab){
+    var isMilk = tab !== 'diaper';
+    el.panelMilk.hidden = !isMilk;
+    el.panelDiaper.hidden = isMilk;
+    el.tabMilkBtn.classList.toggle('active', isMilk);
+    el.tabDiaperBtn.classList.toggle('active', !isMilk);
+    try{ localStorage.setItem(ACTIVE_TAB_STORAGE, isMilk ? 'milk' : 'diaper'); } catch(e){}
+  }
+
+  function setupTabs(){
+    var saved = '';
+    try{ saved = localStorage.getItem(ACTIVE_TAB_STORAGE) || ''; } catch(e){}
+    setActiveTab(saved === 'diaper' ? 'diaper' : 'milk');
+    el.tabMilkBtn.addEventListener('click', function(){ setActiveTab('milk'); });
+    el.tabDiaperBtn.addEventListener('click', function(){ setActiveTab('diaper'); });
+  }
+
+  function setupDiaperUI(){
+    renderDiaperTypeChips();
+    el.diaperTimeInput.value = nowLocalInputValue();
+    el.diaperBtnWet.addEventListener('click', function(){ handleDiaperQuickLog('wet'); });
+    el.diaperBtnDirty.addEventListener('click', function(){ handleDiaperQuickLog('dirty'); });
+    el.diaperBtnBoth.addEventListener('click', function(){ handleDiaperQuickLog('both'); });
+    el.diaperSaveBtn.addEventListener('click', handleDiaperSave);
+    el.diaperCancelEdit.addEventListener('click', showDiaperQuickAdd);
+  }
+
   function handleExport(){
     try{
-      var blob = new Blob([JSON.stringify(allDocs, null, 2)], {type:'application/json'});
+      var payload = { feedings: allDocs, diapers: allDiapers, exportedAt: new Date().toISOString() };
+      var blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
       var url = URL.createObjectURL(blob);
       var a = document.createElement('a');
       var stamp = todayKey().replace(/-/g,'');
@@ -977,24 +1454,44 @@
     var reader = new FileReader();
     reader.onload = function(){
       try{
-        var arr = JSON.parse(String(reader.result));
-        if(!Array.isArray(arr)) throw new Error('bad format');
+        var parsed = JSON.parse(String(reader.result));
+        var feedArr, diaperArr;
+        if(Array.isArray(parsed)){
+          feedArr = parsed;
+          diaperArr = [];
+        } else if(parsed && typeof parsed === 'object'){
+          feedArr = Array.isArray(parsed.feedings) ? parsed.feedings : [];
+          diaperArr = Array.isArray(parsed.diapers) ? parsed.diapers : [];
+        } else {
+          throw new Error('bad format');
+        }
+
         var prevDocs = allDocs.slice();
+        var prevDiapers = allDiapers.slice();
         var byId = {};
         allDocs.forEach(function(d){ byId[d.id] = d; });
-        arr.forEach(function(d){
-          if(d && d.id && d.at) byId[d.id] = d;
-        });
+        feedArr.forEach(function(d){ if(d && d.id && d.at) byId[d.id] = d; });
         allDocs = Object.keys(byId).map(function(k){ return byId[k]; });
+
+        var diaperById = {};
+        allDiapers.forEach(function(d){ diaperById[d.id] = d; });
+        diaperArr.forEach(function(d){ if(d && d.id && d.at) diaperById[d.id] = d; });
+        allDiapers = Object.keys(diaperById).map(function(k){ return diaperById[k]; });
+
         if(isFamilyMode()){
-          importFamily(arr);
-        } else if(saveDocs()){
-          showToast('Đã nhập dữ liệu (' + arr.length + ' mục)');
-          renderAll();
+          importFamily(feedArr, diaperArr);
         } else {
-          allDocs = prevDocs;
-          showToast('Không nhập được - bộ nhớ trình duyệt bị chặn');
+          var okFeed = saveDocs();
+          var okDiaper = saveDiapers();
+          if(okFeed && okDiaper){
+            showToast('Đã nhập dữ liệu (' + feedArr.length + ' cữ bú, ' + diaperArr.length + ' lần thay bỉm)');
+          } else {
+            allDocs = prevDocs;
+            allDiapers = prevDiapers;
+            showToast('Không nhập được - bộ nhớ trình duyệt bị chặn');
+          }
           renderAll();
+          renderDiaperAll();
         }
       } catch(e){
         showToast('File không hợp lệ');
@@ -1003,18 +1500,25 @@
     reader.readAsText(file);
   }
 
-  async function importFamily(arr){
-    var ref = familyFeedingsRef();
-    if(!ref){ showToast('Chưa kết nối được đồng bộ'); return; }
+  async function importFamily(feedArr, diaperArr){
+    var feedRef = familyFeedingsRef();
+    var diaperRef = familyDiapersRef();
+    if(!feedRef || !diaperRef){ showToast('Chưa kết nối được đồng bộ'); return; }
     try{
-      var valid = arr.filter(function(d){ return d && d.id && d.at; });
-      await Promise.all(valid.map(function(d){
+      var validFeed = feedArr.filter(function(d){ return d && d.id && d.at; });
+      var validDiaper = diaperArr.filter(function(d){ return d && d.id && d.at; });
+      await Promise.all(validFeed.map(function(d){
         var copy = Object.assign({}, d);
         var id = copy.id;
         delete copy.id;
-        return ref.doc(id).set(copy);
-      }));
-      showToast('Đã nhập dữ liệu (' + valid.length + ' mục)');
+        return feedRef.doc(id).set(copy);
+      }).concat(validDiaper.map(function(d){
+        var copy = Object.assign({}, d);
+        var id = copy.id;
+        delete copy.id;
+        return diaperRef.doc(id).set(copy);
+      })));
+      showToast('Đã nhập dữ liệu (' + validFeed.length + ' cữ bú, ' + validDiaper.length + ' lần thay bỉm)');
     } catch(e){
       showToast('Không nhập được: ' + (e && e.message ? e.message : 'lỗi'));
     }
@@ -1033,11 +1537,11 @@
     appId: "1:105772586519:web:d97d0ac2fd3cbc10d32e52"
   };
   var GEMINI_MODEL = 'gemini-3.6-flash';
-  var AI_PERSONA = 'Bạn là một chuyên gia chăm sóc trẻ sơ sinh và tư vấn dinh dưỡng nhi khoa giàu kinh nghiệm, chuyên hỗ trợ các bậc cha mẹ Việt Nam về lịch bú, lượng sữa phù hợp theo từng giai đoạn phát triển của bé, và cách nhận biết các dấu hiệu bất thường khi bú. ';
+  var AI_PERSONA = 'Bạn là một chuyên gia sức khỏe nhi khoa giàu kinh nghiệm, chuyên hỗ trợ các bậc cha mẹ Việt Nam theo dõi sự phát triển của trẻ sơ sinh qua lịch bú, lượng sữa và tình trạng đi tiêu/thay bỉm. Bạn luôn kết hợp cả hai loại dữ liệu này để đưa ra đánh giá và lời khuyên toàn diện, giống như cách một bác sĩ nhi hỏi han cả hai vấn đề khi khám cho bé. ';
   var AI_SUGGESTIONS = [
     'Bé bú vậy có đủ không?',
     'So với 7 ngày trước thế nào?',
-    'Có cữ nào bất thường không?'
+    'Đi tiêu và bú của bé có bình thường không?'
   ];
 
   function renderAiSuggestChips(){
@@ -1070,6 +1574,24 @@
     });
     return 'Tổng hợp 14 ngày gần đây (ngày: số cữ, tổng ml):\n' + dayLines.join('\n') +
       '\n\nChi tiết các cữ gần nhất (mới nhất trước):\n' + (recentLines.length ? recentLines.join('\n') : '(chưa có dữ liệu)');
+  }
+
+  function buildDiaperContext(){
+    var days = [];
+    for(var i=13;i>=0;i--){ days.push(addDays(todayKey(), -i)); }
+    var dayLines = days.map(function(key){
+      var items = allDiapers.filter(function(d){ return d.dateKey === key; });
+      var wet = items.filter(function(d){ return d.type === 'wet' || d.type === 'both'; }).length;
+      var dirty = items.filter(function(d){ return d.type === 'dirty' || d.type === 'both'; }).length;
+      return key + ': ' + items.length + ' lần (tè ' + wet + ', ị ' + dirty + ')';
+    });
+    var recentLines = allDiapers.slice(0, 15).map(function(d){
+      var t = diaperTypeInfo(d.type);
+      return d.at + ' — ' + t.label + (d.note ? ' (ghi chú: ' + d.note + ')' : '');
+    });
+    return 'Tổng hợp 14 ngày gần đây về thay bỉm (ngày: tổng số lần, số lần tè, số lần ị):\n' + dayLines.join('\n') +
+      '\n\nChi tiết các lần thay bỉm gần nhất (mới nhất trước, chú ý phần ghi chú nếu có vì đó là những lần phụ huynh thấy khác thường):\n' +
+      (recentLines.length ? recentLines.join('\n') : '(chưa có dữ liệu)');
   }
 
   function setAiBusy(busy){
@@ -1124,10 +1646,10 @@
 
     var dob = getBabyDob();
     var prompt = AI_PERSONA +
-      'Dựa trên dữ liệu bú sữa dưới đây' + (dob ? (' và thông tin bé ' + ageTextFromDob(dob)) : '') + ', hãy trả lời câu hỏi của phụ huynh bằng tiếng Việt — ngắn gọn, dễ hiểu, giọng gần gũi như một chuyên gia đang tư vấn trực tiếp. ' +
-      'Nếu phù hợp, hãy đưa ra lời khuyên hoặc lưu ý cụ thể (vd: nên điều chỉnh cữ bú/lượng sữa thế nào, dấu hiệu nào cần theo dõi thêm). ' +
+      'Dựa trên dữ liệu bú sữa và thay bỉm dưới đây' + (dob ? (' và thông tin bé ' + ageTextFromDob(dob)) : '') + ', hãy trả lời câu hỏi của phụ huynh bằng tiếng Việt — ngắn gọn, dễ hiểu, giọng gần gũi như một chuyên gia đang tư vấn trực tiếp. ' +
+      'Hãy đối chiếu cả hai loại dữ liệu (bú và đi tiêu) với nhau nếu liên quan tới câu hỏi. Nếu phù hợp, hãy đưa ra lời khuyên hoặc lưu ý cụ thể (vd: nên điều chỉnh cữ bú/lượng sữa thế nào, dấu hiệu đi tiêu nào cần theo dõi thêm). ' +
       'Đây không thay thế tư vấn y tế trực tiếp — nếu câu hỏi liên quan sức khỏe của bé, hãy nhắc phụ huynh hỏi thêm bác sĩ nhi khoa nếu lo lắng.\n\n' +
-      buildFeedingContext() + '\n\nCâu hỏi của phụ huynh: ' + question;
+      buildFeedingContext() + '\n\n' + buildDiaperContext() + '\n\nCâu hỏi của phụ huynh: ' + question;
 
     setAiBusy(true);
     el.aiAnswer.hidden = true;
@@ -1203,11 +1725,12 @@
     el.aiAutoRefresh.disabled = true;
     showAiAutoMessage('Đang phân tích...', false);
     var prompt = AI_PERSONA +
-      'Em bé bạn đang theo dõi ' + ageTextFromDob(dob) + '. Dựa trên dữ liệu bú sữa dưới đây, hãy đưa ra nhận xét ngắn gọn (khoảng 3-5 câu) bằng tiếng Việt, như một chuyên gia đang theo dõi hàng ngày: ' +
-      'có gì bất thường không (bú quá ít, quá nhiều, hay khoảng cách giữa các cữ bất thường so với độ tuổi của bé), và đưa ra lời khuyên/lưu ý cụ thể cho mẹ nếu cần (vd: nên giãn hay rút ngắn cữ bú, tăng/giảm lượng sữa, dấu hiệu nào nên theo dõi thêm). ' +
+      'Em bé bạn đang theo dõi ' + ageTextFromDob(dob) + '. Dựa trên dữ liệu bú sữa VÀ thay bỉm dưới đây, hãy đưa ra nhận xét ngắn gọn (khoảng 3-5 câu) bằng tiếng Việt, như một chuyên gia đang theo dõi hàng ngày: ' +
+      'có gì bất thường không (bú quá ít/quá nhiều, khoảng cách giữa các cữ bất thường so với độ tuổi, số lần/tình trạng đi tiêu bất thường, đặc biệt chú ý các ghi chú về màu phân hoặc điểm khác lạ), và đưa ra lời khuyên/lưu ý cụ thể cho mẹ nếu cần. ' +
+      'Hãy đối chiếu hai loại dữ liệu với nhau khi có thể (vd: bú ít có đi kèm ít lần tè không). ' +
       'Nếu dữ liệu bình thường, chỉ cần nhận xét ngắn gọn tích cực kèm một lưu ý nhỏ hữu ích, không cần tạo lo lắng không cần thiết. ' +
-      'Đây không thay thế tư vấn y tế trực tiếp — nếu có dấu hiệu đáng lo, luôn nhắc mẹ nên hỏi bác sĩ nhi khoa.\n\n' +
-      buildFeedingContext();
+      'Đây không thay thế tư vấn y tế trực tiếp — nếu có dấu hiệu đáng lo (đặc biệt các ghi chú bất thường về phân), luôn nhắc mẹ nên hỏi bác sĩ nhi khoa.\n\n' +
+      buildFeedingContext() + '\n\n' + buildDiaperContext();
     try{
       var text = await callGemini(prompt);
       text = text || 'AI chưa phân tích được, thử lại sau.';
@@ -1230,7 +1753,7 @@
     }
     if(!apiKey){
       el.aiAutoRefresh.hidden = true;
-      showAiAutoMessage('Cần API key ở mục "Hỏi AI về lượng sữa" bên dưới để bật tính năng này.', false);
+      showAiAutoMessage('Cần API key ở mục "Hỏi AI về bé" bên dưới để bật tính năng này.', false);
       return;
     }
     el.aiAutoRefresh.hidden = false;
@@ -1256,9 +1779,9 @@
   }
 
   function setupUI(){
-    el.prevDay.addEventListener('click', function(){ selectedDateKey = addDays(selectedDateKey, -1); renderAll(); });
-    el.nextDay.addEventListener('click', function(){ if(selectedDateKey < todayKey()){ selectedDateKey = addDays(selectedDateKey, 1); renderAll(); } });
-    el.dayLabel.addEventListener('click', function(){ selectedDateKey = todayKey(); renderAll(); });
+    el.prevDay.addEventListener('click', function(){ selectedDateKey = addDays(selectedDateKey, -1); renderAll(); renderDiaperAll(); });
+    el.nextDay.addEventListener('click', function(){ if(selectedDateKey < todayKey()){ selectedDateKey = addDays(selectedDateKey, 1); renderAll(); renderDiaperAll(); } });
+    el.dayLabel.addEventListener('click', function(){ selectedDateKey = todayKey(); renderAll(); renderDiaperAll(); });
     el.amtMinus.addEventListener('click', function(){ el.amountInput.value = Math.max(0, Number(el.amountInput.value||0) - 10); renderAmountPresets(); });
     el.amtPlus.addEventListener('click', function(){ el.amountInput.value = Number(el.amountInput.value||0) + 10; renderAmountPresets(); });
     el.amountInput.addEventListener('input', renderAmountPresets);
@@ -1271,22 +1794,29 @@
       el.importFile.value = '';
     });
     setInterval(renderSummary, 30000);
+    setInterval(renderDiaperSummary, 30000);
     setupBabyInfo();
     setupAiPanel();
     setupFamilyPanel();
+    setupTabs();
+    setupDiaperUI();
   }
 
   function boot(){
     familyCode = getFamilyCode();
     if(familyCode){
       subscribeFamily();
+      subscribeFamilyDiapers();
     } else {
       loadDocs();
+      loadDiapers();
       if(!storageOk) el.storageBanner.hidden = false;
     }
     resetForm();
+    showDiaperQuickAdd();
     setupUI();
     renderAll();
+    renderDiaperAll();
   }
 
   boot();

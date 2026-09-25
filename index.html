@@ -178,7 +178,7 @@
 <div class="app">
   <header class="topbar">
     <div class="topbar-inner">
-      <h1>Nhật Ký Sữa Của Shyn</h1>
+      <h1 id="appTitle">Nhật Ký Sữa Của Shyn</h1>
       <div class="daynav">
         <button class="navarrow" id="prevDay" aria-label="Ngày trước">‹</button>
         <button class="daylabel" id="dayLabel"></button>
@@ -196,6 +196,10 @@
 
     <section class="card">
       <h2>Thông tin của bé</h2>
+      <div class="field">
+        <label>Tên bé</label>
+        <input id="babyNameInput" type="text" placeholder="vd: Shyn" maxlength="30">
+      </div>
       <div class="field">
         <label>Ngày sinh</label>
         <input id="babyDobInput" type="date">
@@ -463,6 +467,8 @@
     aiKeyClear: document.getElementById('aiKeyClear'),
     aiAskBtn: document.getElementById('aiAskBtn'),
     aiAnswer: document.getElementById('aiAnswer'),
+    appTitle: document.getElementById('appTitle'),
+    babyNameInput: document.getElementById('babyNameInput'),
     babyDobInput: document.getElementById('babyDobInput'),
     babyAgeText: document.getElementById('babyAgeText'),
     aiAutoBody: document.getElementById('aiAutoBody'),
@@ -1526,6 +1532,7 @@
 
   var GEMINI_KEY_STORAGE = 'nhatkysua.gemini_key.v1';
   var BABY_DOB_STORAGE = 'nhatkysua.baby_dob.v1';
+  var BABY_NAME_STORAGE = 'nhatkysua.baby_name.v1';
   var AI_AUTO_STORAGE = 'nhatkysua.ai_auto.v1';
   var FAMILY_CODE_STORAGE = 'nhatkysua.family_code.v1';
   var FIREBASE_CONFIG = {
@@ -1765,6 +1772,19 @@
     }
   }
 
+  function getBabyName(){
+    try{
+      var v = localStorage.getItem(BABY_NAME_STORAGE);
+      return v === null ? 'Shyn' : v;
+    } catch(e){ return 'Shyn'; }
+  }
+
+  function applyAppTitle(name){
+    var title = name ? ('Nhật Ký Sữa Của ' + name) : 'Nhật Ký Sữa';
+    el.appTitle.textContent = title;
+    document.title = title;
+  }
+
   function setupBabyInfo(){
     var dob = getBabyDob();
     el.babyDobInput.value = dob;
@@ -1774,6 +1794,16 @@
       el.babyAgeText.textContent = ageTextFromDob(el.babyDobInput.value);
       renderAiAutoBody();
     });
+
+    var name = getBabyName();
+    el.babyNameInput.value = name;
+    applyAppTitle(name);
+    el.babyNameInput.addEventListener('input', function(){
+      var v = el.babyNameInput.value.trim();
+      try{ localStorage.setItem(BABY_NAME_STORAGE, v); } catch(e){}
+      applyAppTitle(v);
+    });
+
     el.aiAutoRefresh.addEventListener('click', function(){ runAutoAnalysis(true); });
     renderAiAutoBody();
   }

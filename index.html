@@ -1594,10 +1594,9 @@
     if(isFamilyMode()){
       var ref = familyVaccineRef();
       if(!ref){ showToast('Chưa kết nối được đồng bộ'); return; }
-      var field = {};
-      field['items.' + id] = entry;
-      field.updatedAt = Date.now();
-      ref.set(field, {merge:true}).catch(function(e){
+      var data = { items: {}, updatedAt: Date.now() };
+      data.items[id] = entry;
+      ref.set(data, { mergeFields: ['items.' + id, 'updatedAt'] }).catch(function(e){
         showToast('Không lưu được: ' + (e && e.message ? e.message : 'lỗi'));
       });
       return;
@@ -1650,14 +1649,20 @@
       dateInput.value = entry.date || '';
       tdDate.appendChild(dateInput);
 
-      cb.addEventListener('change', function(){
-        var newEntry = { done: cb.checked, date: entry.date || '' };
-        if(cb.checked && !newEntry.date) newEntry.date = todayKey();
+      function commitCheck(nextChecked){
+        var newEntry = { done: nextChecked, date: entry.date || '' };
+        if(nextChecked && !newEntry.date) newEntry.date = todayKey();
         setVaccineEntry(v.id, newEntry);
-      });
+      }
+
+      cb.addEventListener('click', function(ev){ ev.stopPropagation(); });
+      cb.addEventListener('change', function(){ commitCheck(cb.checked); });
+      dateInput.addEventListener('click', function(ev){ ev.stopPropagation(); });
       dateInput.addEventListener('change', function(){
         setVaccineEntry(v.id, { done: entry.done, date: dateInput.value });
       });
+
+      tr.addEventListener('click', function(){ commitCheck(!cb.checked); });
 
       tr.appendChild(tdCheck);
       tr.appendChild(tdWhen);
